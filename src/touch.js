@@ -17,7 +17,7 @@ export function initTouch(actions) {
     for (const k in touch) touch[k] = false;
     for (const k of ptrs.values()) if (k in touch) touch[k] = true;
     for (const b of keyBtns) b.classList.toggle('on', touch[b.dataset.k]);
-    horn.classList.toggle('on', [...ptrs.values()].includes('horn'));
+    horn?.classList.toggle('on', [...ptrs.values()].includes('horn'));
   };
   const keyAt = (x, y) => document.elementFromPoint(x, y)?.closest?.('#touch [data-k]')?.dataset.k;
 

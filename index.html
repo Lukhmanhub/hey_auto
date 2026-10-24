@@ -57,16 +57,12 @@
     <div id="touch">
       <div class="t-acts">
         <button class="t-btn" data-act="pause" aria-label="Pause and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
-        <button class="t-btn" data-act="camera" aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></button>
-        <button class="t-btn" data-act="radio" aria-label="Next radio station"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg></button>
       </div>
-      <button class="t-horn" data-act="horn" aria-label="Horn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg><span>HORN</span></button>
       <div class="t-steer">
         <button data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
         <button data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
       <div class="t-pedals">
-        <button class="t-hb" data-k="brake" aria-label="Hand brake">(P)</button>
         <button class="t-brake" data-k="down" aria-label="Brake and reverse"><i></i><span>BRAKE</span></button>
         <button class="t-gas" data-k="up" aria-label="Accelerate"><i></i><span>GAS</span></button>
       </div>
@@ -116,7 +112,7 @@
         <span><kbd>T</kbd> skip an hour</span>
       </div>
       <div class="t-ctrl t-only">
-        <span><b>◀ ▶</b> steer</span><span><b>GAS</b> · <b>BRAKE</b> pedals (hold brake to reverse)</span><span><b>(P)</b> hand brake</span><span><b>HORN</b></span><span><b>⏸</b> radio, rain, time & settings</span>
+        <span><b>◀ ▶</b> steer</span><span><b>GAS</b> · <b>BRAKE</b> pedals (hold brake to reverse)</span><span><b>⏸</b> camera, radio, rain, time & settings</span>
       </div>
       <button id="start" disabled>Loading town…</button>
     </div>
@@ -129,6 +125,7 @@
       <div class="settings">
         <div class="set"><span>HUD size</span><div class="seg" data-set="scale"><button data-v="0.85">S</button><button data-v="1">M</button><button data-v="1.15">L</button></div></div>
         <div class="set"><span>Graphics</span><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
+        <div class="set t-only"><span>Camera</span><div class="seg seg-act" id="p-cam"><button data-cam="0">Chase</button><button data-cam="1">High</button><button data-cam="2">Driver</button></div></div>
         <div class="set t-only"><span>Radio</span><div class="t-radio"><button data-radio="prev" aria-label="Previous station">◀</button><span id="p-station">Off</span><button data-radio="next" aria-label="Next station">▶</button></div></div>
         <div class="set t-only"><span>Radio volume</span><div class="seg seg-act"><button data-radio="down">−</button><button class="ro" id="p-vol" disabled>5</button><button data-radio="up">+</button><button data-radio="off">Off</button></div></div>
         <div class="set t-only"><span>Town</span><div class="seg seg-act"><button data-more="rain" id="p-rain">Rain</button><button data-more="hour">+1 hour</button><button data-more="mute" id="p-mute">Sound on</button></div></div>

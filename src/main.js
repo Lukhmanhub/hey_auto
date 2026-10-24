@@ -292,7 +292,9 @@ function syncPauseExtras() {
   document.getElementById('p-rain').classList.toggle('on', raining);
   document.getElementById('p-mute').textContent = muted ? 'Sound off' : 'Sound on';
   document.getElementById('p-mute').classList.toggle('on', !muted);
+  document.querySelectorAll('#p-cam button').forEach((b) => b.classList.toggle('on', +b.dataset.cam === camMode));
 }
+document.querySelectorAll('#p-cam button').forEach((b) => b.addEventListener('click', () => { camMode = +b.dataset.cam; syncPauseExtras(); }));
 document.querySelectorAll('[data-radio]').forEach((b) => b.addEventListener('click', () => {
   const r = sound.radio; if (!r) return;
   const v = b.dataset.radio;

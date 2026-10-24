@@ -300,9 +300,10 @@ html.touch {
 html.touch .hud-g { zoom: calc(var(--s) * var(--z, 0.6)); }
 html.touch .earn { --z: 0.62; top: calc(10px / 0.62); left: calc((12px + var(--sl)) / 0.62); padding-bottom: 6px; }
 html.touch .earn-sub { display: none; }
-html.touch .map { --z: 0.5; top: calc(12px / 0.5); right: calc((14px + var(--sr)) / 0.5); pointer-events: auto; transition: zoom 0.3s ease; }
+html.touch .speech, html.touch .notes, html.touch .trip-end, html.touch .phone-mount, html.touch .meter-unit, html.touch .radio, html.touch .cluster-side { display: none !important; }
+html.touch .map { --z: 0.5; top: calc(12px / 0.5); right: calc((66px + var(--sr)) / 0.5); pointer-events: auto; transition: zoom 0.3s ease; }
 html.touch .map.big { --z: 0.95; }
-html.touch .clock { --z: 0.6; top: calc(128px / 0.6); right: calc((8px + var(--sr)) / 0.6); }
+html.touch .clock { --z: 0.6; top: calc(128px / 0.6); right: calc((60px + var(--sr)) / 0.6); }
 html.touch .map.big ~ .clock { opacity: 0; }
 html.touch .radio { --z: 0.66; top: calc(104px / 0.66); right: calc((196px + var(--sr)) / 0.66); }
 html.touch .r-chip, html.touch .r-panel .keys { display: none; }
@@ -322,7 +323,7 @@ html.touch .phone { transform: rotateZ(var(--bz, 0deg)) translateX(var(--bx, 0px
 /* fare meter + speedo between the thumbs */
 html.touch .meter-unit { --z: 0.5; bottom: calc((10px + var(--sb)) / 0.5); }
 html.touch #hud .meter-unit { opacity: 1; }
-html.touch .cluster { --z: 0.44; left: calc((190px + var(--sl)) / 0.44); bottom: calc((6px + var(--sb)) / 0.44); }
+html.touch .cluster { --z: 0.5; left: 50%; transform: translateX(-50%); bottom: calc((8px + var(--sb)) / 0.5); }
 html.touch #hud .cluster { opacity: 1; }
 html.touch .limit { display: none; }
 html.touch .cluster-side { position: absolute; left: 0; bottom: 100%; margin: 0 0 4px; }
@@ -368,10 +369,8 @@ html.touch #touch { display: block; position: absolute; inset: 0; pointer-events
 #touch .t-hb { right: calc(100px + var(--sr)); bottom: calc(122px + var(--sb)); width: 76px; height: 40px; border-radius: 14px; font: 800 14px var(--ui); letter-spacing: 0.06em; padding-top: 2px; }
 
 /* small round buttons beside the minimap */
-.t-acts button { right: calc(140px + var(--sr)); width: 42px; height: 42px; border-radius: 50%; }
+.t-acts button { right: calc(12px + var(--sr)); width: 42px; height: 42px; border-radius: 50%; }
 .t-acts [data-act='pause'] { top: 10px; }
-.t-acts [data-act='camera'] { top: 60px; }
-.t-acts [data-act='radio'] { top: 110px; }
 .t-acts button:active { background: rgba(247, 198, 0, 0.88); color: var(--ink); }
 
 /* ---- title, pause and help on a small landscape screen ---- */
