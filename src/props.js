@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { N, B, HALF, BOUND, LANDMARKS, gx, blockKind, hasFootpath } from './config.js';
 import { Bucket, signTexture, FONT_PAINT } from './util.js';
+import { onRoad } from './world.js';
 import { vcMat, makePerson, poseSeated, autoGeometry, autoBackDecals, AUTO_NAMES, randomPlate, shadeTreeGeometry, bushGeometry } from './models.js';
 import { ADS } from './prints.js';
 
@@ -194,6 +195,7 @@ export function buildProps(ctx) {
     (prand() < 0.5 ? trees.jack : trees.mango).push([x, z, 1 + prand() * 0.5]);
   }
   const tmp = new THREE.Object3D();
+  for (const l of [trees.jack, trees.mango, bushes.hib, bushes.jas]) for (let i = l.length - 1; i >= 0; i--) if (onRoad(l[i][0], l[i][1], 2)) l.splice(i, 1);
   const inst = (geo, list) => { if (!list.length) return; const im = new THREE.InstancedMesh(geo, vcMat, list.length); list.forEach(([x, z, s], k) => { tmp.position.set(x, 0, z); tmp.rotation.set(0, k * 1.7, 0); tmp.scale.setScalar(s); tmp.updateMatrix(); im.setMatrixAt(k, tmp.matrix); }); im.castShadow = true; scene.add(im); };
   inst(shadeTreeGeometry('jack'), trees.jack); inst(shadeTreeGeometry('mango'), trees.mango);
   inst(bushGeometry('#d81b2c'), bushes.hib); inst(bushGeometry('#fbfbf2'), bushes.jas);

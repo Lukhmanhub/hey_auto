@@ -76,6 +76,16 @@ function canvasTex(draw, w, h) {
 // unit hip roof: square base of side 1 on the axes, apex at +0.5
 const hipRoof = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4);
 
+// Is (x, z) on (or within `margin` of) any road strip?
+export function onRoad(x, z, margin = 0) {
+  const lim = HALF + ROAD_HALF + margin;
+  for (let k = 0; k <= N; k++) {
+    if (Math.abs(x - gx(k)) < ROAD_HALF + margin && Math.abs(z) < lim) return true;
+    if (Math.abs(z - gx(k)) < ROAD_HALF + margin && Math.abs(x) < lim) return true;
+  }
+  return false;
+}
+
 export function buildWorld(scene) {
   const rand = mulberry32(20261024);
   const prand = mulberry32(919);   // posters + compound walls get their own stream so the town layout stays put
@@ -133,6 +143,7 @@ export function buildWorld(scene) {
     }
   };
   const palm = (x, z, s = 0.8 + rand() * 0.45, collide = true) => {
+    if (onRoad(x, z, 1.2)) return;          // never plant a tree on the carriageway
     palms.push({ x, z, s, ry: rand() * Math.PI * 2, v: Math.floor(rand() * 3) });
     if (collide) col.addCentered(x, z, 0.5, 0.5, 'tree');
   };
@@ -1025,6 +1036,7 @@ export function buildWorld(scene) {
     im.castShadow = true;
     scene.add(im);
   }
+  for (let i = bananas.length - 1; i >= 0; i--) if (onRoad(bananas[i].x, bananas[i].z, 1)) bananas.splice(i, 1);
   const bim = new THREE.InstancedMesh(bananaGeometry(), bananaMat, bananas.length);
   bananas.forEach((p, n) => { tmp.position.set(p.x, 0, p.z); tmp.rotation.set(0, p.ry, 0); tmp.scale.setScalar(p.s); tmp.updateMatrix(); bim.setMatrixAt(n, tmp.matrix); });
   bim.castShadow = true;
