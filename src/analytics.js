@@ -1,10 +1,13 @@
 // Anonymous play analytics: no cookies, no names, nothing typed. A random id in localStorage tells
 // a returning visitor from a new one; everything else is counts (device, how far they got, rides, fines).
 // Events are batched and sent with sendBeacon to the hey-auto Vercel function (api/t.js), which keeps
-// daily totals. The dashboard lives at /heyauto/analytics.
+// daily totals. The dashboard lives at lukhmandesigns.com/heyauto/analytics.
 const local = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
 const params = new URLSearchParams(location.search);
-const OFF = params.has('notrack') || (navigator.webdriver && !params.has('track')) || (local && !params.has('track'));
+// Only plays on the portfolio (lukhmandesigns.com/heyauto) count — not the raw hey-auto.vercel.app
+// address, local dev or automated browsers. Add ?track=1 to force it for testing.
+const portfolio = /(^|\.)lukhmandesigns\.com$/.test(location.hostname);
+const OFF = params.has('notrack') || (!params.has('track') && (!portfolio || navigator.webdriver));
 // straight to the game's own Vercel project, so its edge sees the player's country (not the portfolio proxy's)
 const ENDPOINT = local ? `${import.meta.env.BASE_URL}api/t` : 'https://hey-auto.vercel.app/api/t';
 
@@ -64,10 +67,11 @@ function source(ua) {
   if (utm) return utm.toLowerCase().slice(0, 24);
   if (/Instagram/.test(ua)) return 'instagram';
   if (/LinkedInApp/.test(ua)) return 'linkedin';
-  let host = '';
-  try { host = new URL(document.referrer).hostname.replace(/^www\./, ''); } catch { /* no referrer */ }
+  let host = '', path = '';
+  try { const u = new URL(document.referrer); host = u.hostname.replace(/^www\./, ''); path = u.pathname; } catch { /* no referrer */ }
   if (!host) return 'direct';
-  if (host === location.hostname.replace(/^www\./, '')) return 'direct';
+  // a click on the portfolio's "Play Hey Auto" card arrives from the same site
+  if (host === location.hostname.replace(/^www\./, '')) return path.startsWith('/heyauto') ? 'direct' : 'portfolio';
   if (/lukhmandesigns/.test(host)) return 'portfolio';
   for (const k of ['instagram', 'linkedin', 'google', 'whatsapp', 'facebook', 'twitter', 'x.com', 't.co', 'reddit', 'behance', 'dribbble', 'youtube', 'bing', 'duckduckgo']) {
     if (host.includes(k)) return k === 'x.com' || k === 't.co' ? 'twitter' : k;
