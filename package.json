@@ -1,0 +1,26 @@
+{
+  "name": "ottam",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ottam — an open-world auto-rickshaw driving game set in Kerala",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dseg": "^0.46.0",
+    "gsap": "^3.12.5",
+    "hls.js": "^1.5.17",
+    "howler": "^2.2.4",
+    "lucide-static": "^0.460.0",
+    "n8ao": "^1.9.4",
+    "postprocessing": "^6.36.4",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "tweakpane": "^4.0.5",
+    "vite": "^5.4.11"
+  }
+}

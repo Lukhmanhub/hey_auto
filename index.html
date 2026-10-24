@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hey Auto — ഹേ ഓട്ടോ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@500;600;700;800&family=Anek+Malayalam:wght@400;500;600;700;800&family=Manjari:wght@400;700&family=Noto+Sans+Devanagari:wght@700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" hidden data-state="cruise" data-lang="all">
+    <div id="flash"></div>
+    <div id="bubbles"></div>
+
+    <div class="earn hud-g">
+      <div class="earn-top">
+        <div><small>Today's net</small><b id="cash">−₹250</b></div>
+        <div class="goal"><small>Goal</small><b id="goal">₹800</b></div>
+      </div>
+      <div class="bar"><i id="goalbar"></i><span class="zero" id="goalzero"></span></div>
+      <div class="earn-sub" id="earnsub">Auto rent −₹250</div>
+    </div>
+    <div class="notes hud-g" id="toasts"></div>
+
+    <div class="speech hud-g" id="speech" hidden><div class="who"></div><div class="ml"></div><div class="mg"></div><div class="en"></div></div>
+    <div class="trip-end hud-g" id="tripend" hidden></div>
+
+    <div class="map hud-g"><canvas id="minimap" width="220" height="220"></canvas></div>
+    <div class="clock hud-g" id="clock"><span class="wx" id="clock-wx"></span><b id="clock-t">07:30</b><small id="clock-ap">AM</small></div>
+    <div class="radio hud-g" id="radio">
+      <div class="r-chip"><i class="live"></i><span class="r-freq" id="r-freq">FM</span><span class="r-short" id="r-short">Radio</span><span class="r-open">▸</span></div>
+      <div class="r-panel" id="r-panel"></div>
+    </div>
+
+    <div class="cluster hud-g" id="cluster">
+      <canvas id="gauge" width="200" height="200"></canvas>
+      <div class="cluster-side">
+        <div class="zone" id="zone">On road</div>
+        <div class="limit" id="limit" title="Speed limit">50</div>
+      </div>
+    </div>
+
+    <div class="meter-unit hud-g" id="meterunit">
+      <div class="flag" id="flag"><span>FOR HIRE</span></div>
+      <canvas id="meter" width="330" height="92"></canvas>
+    </div>
+
+    <div class="phone-mount hud-g">
+      <div class="phone" id="phone"><div class="cam"></div><div class="screen" id="ride"></div></div>
+      <div class="clamp"></div><div class="arm"></div>
+    </div>
+  </div>
+
+  <div id="help" class="overlay" hidden>
+    <div class="card help-card">
+      <div class="logo"><span class="ml">ഹേ ഓട്ടോ</span><span class="en">Controls</span></div>
+      <div class="help-grid">
+        <span><kbd>W</kbd><kbd>S</kbd></span><span>Throttle · brake / reverse</span>
+        <span><kbd>A</kbd><kbd>D</kbd></span><span>Steer</span>
+        <span><kbd>Space</kbd></span><span>Hand brake</span>
+        <span><kbd>H</kbd></span><span>Horn</span>
+        <span><kbd>C</kbd></span><span>Camera: chase · high · driver seat</span>
+        <span><kbd>Q</kbd> <kbd>⇧</kbd><kbd>Q</kbd></span><span>Radio: next · previous station</span>
+        <span><kbd>[</kbd><kbd>]</kbd></span><span>Radio volume</span>
+        <span><kbd>R</kbd></span><span>Monsoon rain</span>
+        <span><kbd>T</kbd></span><span>Skip ahead one hour</span>
+        <span><kbd>M</kbd></span><span>Mute</span>
+        <span><kbd>Esc</kbd> <kbd>P</kbd></span><span>Pause & settings</span>
+        <span><kbd>/</kbd></span><span>This help</span>
+      </div>
+      <p class="tag small">Gamepad: left stick steer · RT drive · LT brake · A hand brake · B horn · X radio · Y camera</p>
+    </div>
+  </div>
+
+  <div id="title" class="overlay">
+    <div class="card">
+      <div class="logo"><span class="ml">ഹേ ഓട്ടോ</span><span class="en">HEY AUTO</span></div>
+      <p class="tag">An auto driver's day in Thekkumpuram, Kerala</p>
+      <div class="how">
+        <div><b>Pick up</b> passengers at the <i class="y">yellow</i> beam, <b>drop</b> them at the <i class="g">green</i> one. Stop beside them to board.</div>
+        <div><b>Meter</b> is on — ₹30 minimum, ₹15 a km after. Clean, quick rides earn tips and stars.</div>
+        <div><b>Keep left</b>, stop at red signals, respect one-ways and the 50 km/h limit. Kerala's AI cameras fine you.</div>
+        <div><b>Shortcuts</b> — locals use the narrow <i>idavazhi</i> lanes through compounds and the bunds across paddy fields.</div>
+        <div><b>Radio</b> — live Akashvani and Kerala FM stations, plus Chenda FM, Melody and Kshetram studio stations, on the dashboard speaker.</div>
+      </div>
+      <div class="ctrl">
+        <span><kbd>W</kbd><kbd>S</kbd> throttle / brake · reverse</span>
+        <span><kbd>A</kbd><kbd>D</kbd> steer</span>
+        <span><kbd>Space</kbd> hand brake</span>
+        <span><kbd>H</kbd> horn</span>
+        <span><kbd>C</kbd> camera</span>
+        <span><kbd>Q</kbd> auto radio</span>
+        <span><kbd>R</kbd> monsoon rain</span>
+        <span><kbd>T</kbd> skip an hour</span>
+      </div>
+      <button id="start" disabled>Loading town…</button>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay" hidden>
+    <div class="card pause-card">
+      <div class="logo"><span class="ml">ഹേ ഓട്ടോ</span><span class="en">Chaya break</span></div>
+      <p class="tag">Paused — the meter is waiting.</p>
+      <div class="settings">
+        <div class="set"><span>HUD size</span><div class="seg" data-set="scale"><button data-v="0.85">S</button><button data-v="1">M</button><button data-v="1.15">L</button></div></div>
+        <div class="set"><span>Graphics</span><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
+        <div class="set"><span>Dialogue</span><div class="seg" data-set="lang"><button data-v="ml">മലയാളം</button><button data-v="mlmg">+ Manglish</button><button data-v="all">+ English</button></div></div>
+      </div>
+      <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button></div>
+      <p class="follow">Enjoying the ride? Follow me on <a href="https://www.instagram.com/lukhman.designs/" target="_blank" rel="noopener">Instagram @lukhman.designs</a></p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
