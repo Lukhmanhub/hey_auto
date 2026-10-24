@@ -31,21 +31,56 @@ const AUTO_COLORS = [['#f4c20d', '#151515'], ['#2e7d32', '#f4c20d'], ['#f4c20d',
 const SCOOTER = [['#c62828', '#9ec5e8'], ['#1565c0', '#f5f5f5'], ['#f5f5f5', '#b0473f'], ['#212121', '#e8d28e'], ['#00897b', '#f5f5f5']];
 const BUSES = [['#b71c1c', '#f2c200', true], ['#1e88e5', '#fdd835', false], ['#8e24aa', '#ffffff', false], ['#00897b', '#ffeb3b', false]];
 
-// Headlights (with a faint beam cone on the road) and tail lights; brightened at night by setNight.
+// Vehicle lights the way they really look at night: a small hot lamp with a soft halo, and a
+// pool of light thrown onto the road ahead that fades with distance (no visible "beam" in clear air).
 const HEAD = new THREE.MeshBasicMaterial({ color: '#2a2822' });
 const TAIL = new THREE.MeshBasicMaterial({ color: '#400a08' });
-const BEAM = new THREE.MeshBasicMaterial({ color: '#fff1cc', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+function radial(stops) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); stops.forEach(([o, col]) => g.addColorStop(o, col));
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+// pool texture: brightest just ahead of the lamps, long soft falloff, slightly wider than long-range
+function poolTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256; const x = c.getContext('2d');
+  const img = x.createImageData(128, 256);
+  for (let y = 0; y < 256; y++) for (let i = 0; i < 128; i++) {
+    const v = y / 255, u = (i - 64) / 64;                       // v: 0 at the bumper, 1 far ahead
+    const width = 0.35 + v * 0.65;
+    const lat = Math.max(0, 1 - (u / width) ** 2);
+    const along = Math.pow(1 - v, 1.6) * Math.min(1, v * 6);    // ramps up off the bumper, fades out
+    const a = Math.pow(lat, 1.5) * along;
+    const k = (y * 128 + i) * 4; img.data[k] = img.data[k + 1] = img.data[k + 2] = 255; img.data[k + 3] = Math.round(a * 255);
+  }
+  x.putImageData(img, 0, 0);
+  return new THREE.CanvasTexture(c);
+}
+const HALO = new THREE.SpriteMaterial({ map: radial([[0, 'rgba(255,248,225,1)'], [0.18, 'rgba(255,236,190,0.55)'], [0.5, 'rgba(255,220,160,0.12)'], [1, 'rgba(255,220,160,0)']]), color: '#000', blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: true });
+const TAILHALO = new THREE.SpriteMaterial({ map: HALO.map, color: '#000', blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: true });
+const POOL = new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#000', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4 });
 const lightGeo = new THREE.BoxGeometry(0.22, 0.12, 0.04);
-const beamGeo = new THREE.ConeGeometry(2.2, 9, 16, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 4.5);
-function vehicleLights(c) {
+const poolGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, -0.5);
+export function vehicleLights(c, { pool: withPool = true } = {}) {
   const g = new THREE.Group();
   const front = { car: [0.56, 0.74], taxi: [0.55, 0.78], van: [0.6, 0.85], bus: [0.85, 0.9], tempo: [0.6, 1.0], jeep: [0.6, 1.0], scooter: [0, 1.1], auto: [0, 1.08], goods: [0, 1.08] }[c.type] ?? [0.5, 0.8];
   const z = c.halfLen + 0.02, [sx, y] = front;
-  for (const x of sx ? [-sx, sx] : [0]) {
+  const two = sx > 0;
+  for (const x of two ? [-sx, sx] : [0]) {
     const h = new THREE.Mesh(lightGeo, HEAD); h.position.set(x, y, z); g.add(h);
-    const t = new THREE.Mesh(lightGeo, TAIL); t.position.set(x || 0.5, Math.min(y, 0.9), -z); g.add(t);
+    const halo = new THREE.Sprite(HALO); halo.position.set(x, y, z + 0.08); halo.scale.setScalar(two ? 1.1 : 0.9); g.add(halo);
   }
-  const beam = new THREE.Mesh(beamGeo, BEAM); beam.position.set(0, y - 0.1, z); beam.rotation.x = 0.12; g.add(beam);
+  // tail lights are always a pair, at the outer corners
+  const tw = two ? sx : c.type === 'scooter' ? 0.12 : 0.5, ty = Math.min(y, 0.9);
+  for (const tx of [-tw, tw]) {
+    const t = new THREE.Mesh(lightGeo, TAIL); t.position.set(tx, ty, -z); g.add(t);
+    const th = new THREE.Sprite(TAILHALO); th.position.set(tx, ty, -z - 0.06); th.scale.setScalar(0.5); g.add(th);
+  }
+  // light pool on the road: width/length depend on the vehicle; it starts at the bumper
+  const pool = new THREE.Mesh(poolGeo, POOL);
+  const len = c.type === 'scooter' ? 9 : c.type === 'auto' || c.type === 'goods' ? 10 : 14;
+  pool.scale.set(two ? sx * 2 + 2.6 : 2.6, 1, len); pool.position.set(0, 0.04, z); pool.rotation.y = Math.PI; pool.renderOrder = 2;
+  if (withPool) g.add(pool);
   return g;
 }
 
@@ -72,7 +107,9 @@ export class Traffic {
   setNight(n) {
     HEAD.color.setRGB(3 * n + 0.15, 2.8 * n + 0.14, 2.2 * n + 0.12);
     TAIL.color.setRGB(2.2 * n + 0.25, 0.08, 0.06);
-    BEAM.opacity = 0.22 * n; BEAM.visible = n > 0.05;
+    HALO.color.setRGB(1.6 * n, 1.5 * n, 1.3 * n);
+    TAILHALO.color.setRGB(1.2 * n, 0.08 * n, 0.04 * n);
+    POOL.color.setRGB(0.42 * n, 0.39 * n, 0.32 * n);
   }
 
   // Day events change who's on the road

@@ -4,6 +4,7 @@ import { buildWorld } from './world.js';
 import { Post, loadSkies } from './post.js';
 import { VFX } from './vfx.js';
 import { skyAt, lightDirAt, sunDirAt, formatClock, Weather, MINUTES_PER_SECOND } from './daycycle.js';
+import { vehicleLights } from './traffic.js';
 import { loadHumans, humansReady, createHuman, updateHumans, setHumanShadowDistance } from './humans.js';
 import { dustScene, dustU } from './dust.js';
 import { Player } from './player.js';
@@ -31,18 +32,28 @@ const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerH
 // dry season: a dusty, sun-bleached haze that softens everything past a few dozen metres
 const CLEAR = { top: new THREE.Color('#7fa6c6'), horizon: new THREE.Color('#d9c8a8'), sun: 2.9, hemi: 0.5, fogNear: 12, fogFar: 520, exposure: 1.0, env: 0.75 };
 const RAIN = { top: new THREE.Color('#5a6366'), horizon: new THREE.Color('#9aa39d'), sun: 0.45, hemi: 0.5, fogNear: 25, fogFar: 300, exposure: 0.92, env: 1.0 };
-const skyU = { top: { value: CLEAR.top.clone() }, horizon: { value: CLEAR.horizon.clone() }, sunDir: { value: new THREE.Vector3(0.45, 0.62, 0.35).normalize() }, sunAmt: { value: 1 }, uNight: { value: 0 }, moonDir: { value: new THREE.Vector3(-0.4, 0.7, -0.3).normalize() } };
+const skyU = { top: { value: CLEAR.top.clone() }, horizon: { value: CLEAR.horizon.clone() }, sunDir: { value: new THREE.Vector3(0.45, 0.62, 0.35).normalize() }, sunAmt: { value: 1 }, sunCol: { value: new THREE.Color('#ffe6bf') }, sunLow: { value: 0 }, uNight: { value: 0 }, moonDir: { value: new THREE.Vector3(-0.4, 0.7, -0.3).normalize() } };
 const sky = new THREE.Mesh(
   new THREE.SphereGeometry(2400, 32, 16),
   new THREE.ShaderMaterial({
     uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; uniform vec3 moonDir; uniform float sunAmt; uniform float uNight; varying vec3 vDir;
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; uniform vec3 moonDir; uniform vec3 sunCol; uniform float sunAmt; uniform float uNight; uniform float sunLow; varying vec3 vDir;
       float hash(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }
       void main(){ vec3 d = normalize(vDir); float h = clamp(d.y, 0.0, 1.0);
-        vec3 c = mix(horizon, top, pow(smoothstep(0.0, 0.55, h), 0.8));
+        vec3 c = mix(horizon, top, pow(smoothstep(0.0, 0.6, h), 0.75));
         float s = max(dot(d, sunDir), 0.0);
-        c += sunAmt * step(0.0, sunDir.y + 0.05) * (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.18);
+        // azimuth toward the sun, ignoring height: drives the warm side of the sky at golden hour
+        vec2 dz = normalize(d.xz + 1e-5), sz = normalize(sunDir.xz + 1e-5);
+        float az = dot(dz, sz) * 0.5 + 0.5;
+        float band = pow(1.0 - h, 6.0);                                           // thin hot band right at the horizon
+        float low = sunLow * step(-0.25, sunDir.y);
+        c += low * sunCol * (pow(az, 3.0) * band * 1.1 + pow(az, 6.0) * pow(1.0 - h, 2.5) * 0.45);    // glow spreading along the horizon
+        c = mix(c, c * vec3(0.78, 0.82, 1.0), low * (1.0 - az) * 0.5);                                  // cool, bluer anti-solar sky
+        c += low * vec3(0.55, 0.28, 0.32) * pow(1.0 - az, 3.0) * smoothstep(0.0, 0.12, h) * (1.0 - smoothstep(0.12, 0.35, h)) * 0.55;   // belt of Venus
+        float vis = step(-0.02, sunDir.y) * sunAmt;
+        c += vis * sunCol * (pow(s, 1400.0) * 9.0 + pow(s, 220.0) * 1.2);                               // disc + bright corona
+        c += sunAmt * sunCol * (pow(s, 8.0) * (0.18 + low * 0.55) + pow(s, 2.0) * low * 0.12);           // mie haze around the sun
         // stars and the moon at night
         vec3 cell = floor(d * 300.0); float st = step(0.9975, hash(cell)) * smoothstep(0.08, 0.35, d.y);
         c += uNight * st * vec3(0.9, 0.92, 1.0) * (0.6 + 0.4 * hash(cell + 7.0));
@@ -82,8 +93,16 @@ const cloudTex = (() => {
 })();
 const cloudMat = new THREE.SpriteMaterial({ map: cloudTex, fog: false, transparent: true, depthWrite: false, opacity: 0.9 });
 const clouds = new THREE.Group();
+// low, flat strato streaks near the horizon: these catch the sunset colour
+for (let k = 0; k < 16; k++) {
+  const s = new THREE.Sprite(cloudMat.clone());
+  const a = Math.random() * Math.PI * 2, r = 900 + Math.random() * 700;
+  s.position.set(Math.cos(a) * r, 60 + Math.random() * 70, Math.sin(a) * r);
+  s.scale.set(700 + Math.random() * 500, 45 + Math.random() * 30, 1);
+  clouds.add(s);
+}
 for (let k = 0; k < 34; k++) {
-  const s = new THREE.Sprite(cloudMat);
+  const s = new THREE.Sprite(cloudMat.clone());
   const a = Math.random() * Math.PI * 2, r = 350 + Math.random() * 900;
   s.position.set(Math.cos(a) * r, 140 + Math.random() * 160, Math.sin(a) * r);
   s.scale.set(260 + Math.random() * 260, 110 + Math.random() * 60, 1);
@@ -125,6 +144,8 @@ if (humansReady()) {
   player.m.driver = d.group;
 }
 const traffic = new Traffic(scene, world, player.pos);
+// your auto gets the same lamp halos and tail lights as the traffic (its road light is a real spotlight)
+{ const l = vehicleLights({ type: 'auto', halfLen: 1.46 }, { pool: false }); l.position.z = -0.04; player.m.body.add(l); }
 const peds = new Pedestrians(scene);
 const missions = new Missions(scene, world, player);
 // dust everywhere: on walls, wheels, signboards and posters (rain washes it down)
@@ -524,7 +545,7 @@ function updateCamera(dt) {
 let gameHour = 7.5;                 // shift starts 7:30 am
 const weather = new Weather();
 let lastHourInt = Math.floor(gameHour), nightAmt = 0;
-const _grey = new THREE.Color();
+const _grey = new THREE.Color(), _cc = new THREE.Color(), _warm = new THREE.Color(), _cool = new THREE.Color(), _cd = new THREE.Vector3();
 
 function updateEnv(dt) {
   // the clock only runs while you're driving
@@ -551,6 +572,10 @@ function updateEnv(dt) {
   skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt);
   skyU.uNight.value = nightAmt * (1 - overcast);
   skyU.sunDir.value.copy(sunDirAt(gameHour));
+  skyU.sunCol.value.copy(k.sunCol);
+  // golden hour → sunset: strongest while the sun is within ~15° of the horizon
+  const elev = skyU.sunDir.value.y;
+  skyU.sunLow.value = (1 - THREE.MathUtils.smoothstep(elev, 0.05, 0.3)) * THREE.MathUtils.smoothstep(elev, -0.22, -0.02) * (1 - overcast * 0.8);
   skyU.moonDir.value.copy(lightDirAt(gameHour + 12));
   sun.color.copy(k.sunCol);
   sun.intensity = k.sun * (1 - overcast * 0.8);
@@ -564,9 +589,17 @@ function updateEnv(dt) {
   traffic.setNight?.(nightAmt);
   dustU.uWet.value = rainAmt;
   dustU.uDust.value = 1 - nightAmt * 0.4;
-  cloudMat.color.setScalar(lerp(1, 0.55, overcast) * lerp(1, 0.06, nightAmt));
-  cloudMat.opacity = lerp(0.9, 1, overcast);
-  player.m.headlight.intensity = Math.max(rainAmt * 18, nightAmt * 40);
+  // clouds take the light: white at noon, gold/rose on the sun side at sunset, grey-violet away from it, near-black at night
+  const sd = skyU.sunDir.value, low = skyU.sunLow.value;
+  for (const c of clouds.children) {
+    const dir = _cd.copy(c.position).normalize();
+    const facing = clamp(dir.x * sd.x + dir.z * sd.z, -1, 1) * 0.5 + 0.5;
+    _cc.setRGB(1, 1, 1).lerp(_warm.copy(k.sunCol).multiplyScalar(1.15), low * (0.35 + 0.65 * facing));
+    _cc.lerp(_cool.setRGB(0.55, 0.5, 0.62), low * (1 - facing) * 0.6);
+    _cc.multiplyScalar(lerp(1, 0.55, overcast) * lerp(1, 0.06, nightAmt) * (1 - low * 0.15));
+    c.material.color.copy(_cc); c.material.opacity = lerp(0.9, 1, overcast);
+  }
+  player.m.headlight.intensity = Math.max(rainAmt * 10, nightAmt * 22);
   wind = 0.35 + rainAmt * 2.4;      // monsoon gusts bend the palms and slant the rain
   vfx.update(dt, camera, rainAmt, wind);
   world.setWind?.(wind);

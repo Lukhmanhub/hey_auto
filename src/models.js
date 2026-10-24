@@ -188,7 +188,8 @@ export function makePlayerAuto() {
   const driver = db.mesh(vcMat);     // box driver: only used if the rigged characters fail to load
   body.add(driver);
 
-  const headlight = new THREE.SpotLight('#fff1c8', 0, 40, 0.5, 0.5, 1.2);
+  // a single, slightly yellow halogen lamp: soft-edged cone, falls off over ~30 m
+  const headlight = new THREE.SpotLight('#ffe2a8', 0, 32, 0.62, 0.85, 1.6);
   headlight.position.set(0, 1.08, 1.5);
   headlight.target.position.set(0, 0, 12);
   body.add(headlight, headlight.target);
