@@ -720,6 +720,6 @@ if (new URLSearchParams(location.search).has('dev')) {
 }
 
 // handy for debugging from the console
-window.__ottam = { vfx, skies, post, player, traffic, peds, missions, world, rules, sound, setRain, input, scene, camera };
+window.__ottam = { vfx, skies, post, player, traffic, peds, missions, world, rules, sound, hud, setRain, input, scene, camera };
 window.__ottam.setHour = (h) => { gameHour = h; };
 window.__ottam.weather = weather;
