@@ -21,7 +21,7 @@ const ARM_R = /^(clavicle_r|upperarm_r|lowerarm_r|hand_r|(index|middle|pinky|rin
 export async function loadHumans() {
   const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
   const l = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const [m, f, h, a] = await Promise.all(['body_m', 'body_f', 'hair', 'anims'].map((n) => l.loadAsync(`/chars/${n}.glb`)));
+  const [m, f, h, a] = await Promise.all(['body_m', 'body_f', 'hair', 'anims'].map((n) => l.loadAsync(`${import.meta.env.BASE_URL}chars/${n}.glb`)));
   T = { m: template(m.scene), f: template(f.scene), hair: {}, clips: {}, skirts: new Map() };
   // bake each hairstyle's node transform into its geometry (Hair_Buns ships at a different scale)
   h.scene.updateMatrixWorld(true);

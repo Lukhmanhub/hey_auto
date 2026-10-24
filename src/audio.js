@@ -13,10 +13,10 @@ export class SoundBank {
     await Promise.all(Object.entries(CLIPS).map(async ([name, opt]) => {
       for (const ext of ['mp3', 'ogg']) {
         try {
-          const r = await fetch(`/sounds/${name}.${ext}`, { method: 'HEAD' });
+          const r = await fetch(`${import.meta.env.BASE_URL}sounds/${name}.${ext}`, { method: 'HEAD' });
           // the dev server answers unknown paths with index.html, so check it really is audio
           if (r.ok && (r.headers.get('content-type') || '').startsWith('audio')) {
-            this.clips[name] = new Howl({ src: [`/sounds/${name}.${ext}`], loop: !!opt.loop, preload: true, html5: false });
+            this.clips[name] = new Howl({ src: [`${import.meta.env.BASE_URL}sounds/${name}.${ext}`], loop: !!opt.loop, preload: true, html5: false });
             return;
           }
         } catch { /* offline: synth it */ }

@@ -79,7 +79,7 @@ export class Post {
 export async function loadSkies(renderer) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const loader = new RGBELoader();
-  const load = (f) => new Promise((res) => loader.load(`/hdri/${f}`, (t) => { const env = pmrem.fromEquirectangular(t).texture; t.dispose(); res(env); }, undefined, () => res(null)));
+  const load = (f) => new Promise((res) => loader.load(`${import.meta.env.BASE_URL}hdri/${f}`, (t) => { const env = pmrem.fromEquirectangular(t).texture; t.dispose(); res(env); }, undefined, () => res(null)));
   const [clear, overcast] = await Promise.all([load('kloofendal_48d_partly_cloudy_puresky_1k.hdr'), load('kloofendal_overcast_puresky_1k.hdr')]);
   pmrem.dispose();
   return { clear, overcast };

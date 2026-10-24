@@ -91,8 +91,8 @@ export function buildWorld(scene) {
   const prand = mulberry32(919);   // posters + compound walls get their own stream so the town layout stays put
   // every poster slot has a fictional print (default) and the player's real image (optional toggle)
   const posters = new PosterPair(new Posters({ sources: FILMS, cols: 4, cw: 320, ch: 448 }), new Posters());
-  const politics = new PosterPair(new Posters({ sources: POLITICAL, cols: 3, cw: 384, ch: 480 }), new Posters({ dir: '/posters/political', count: 7, cols: 4, cw: 384, ch: 480, fit: 'contain' }));
-  const ads = new PosterPair(new Posters({ sources: ADS, cols: 5, cw: 384, ch: 480 }), new Posters({ dir: '/posters/real-ads', count: 18, cols: 6, cw: 384, ch: 480, fit: 'contain' }));
+  const politics = new PosterPair(new Posters({ sources: POLITICAL, cols: 3, cw: 384, ch: 480 }), new Posters({ dir: `${import.meta.env.BASE_URL}posters/political`, count: 7, cols: 4, cw: 384, ch: 480, fit: 'contain' }));
+  const ads = new PosterPair(new Posters({ sources: ADS, cols: 5, cw: 384, ch: 480 }), new Posters({ dir: `${import.meta.env.BASE_URL}posters/real-ads`, count: 18, cols: 6, cw: 384, ch: 480, fit: 'contain' }));
   const bunting = new Bucket();
   const election = { bunting: new Bucket(), signs: new Map(), poles: new Bucket() };   // only shown in election season
   const shops = [];

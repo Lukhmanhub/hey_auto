@@ -6,7 +6,7 @@ import { Bucket } from './util.js';
 // atlas: row pairs hold a "fresh" and a "weathered" (faded, stained, torn) copy
 // of each image, so every poster of a set is a single merged mesh / draw call.
 export class Posters {
-  constructor({ dir = '/posters', count = 10, cols = 5, cw = 256, ch = 384, fit = 'cover', sources = null } = {}) {
+  constructor({ dir = `${import.meta.env.BASE_URL}posters`, count = 10, cols = 5, cw = 256, ch = 384, fit = 'cover', sources = null } = {}) {
     if (sources) count = sources.length;
     Object.assign(this, { dir, cols, cw, ch, fit, sources });
     this.canvas = document.createElement('canvas');

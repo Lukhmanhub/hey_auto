@@ -5,7 +5,7 @@ import { Bucket } from './util.js';
 // world space (TexBucket), so tiles stay the same size on every wall, roof and footpath.
 const loader = new THREE.TextureLoader();
 function tex(name, { srgb = true, repeat = 1 } = {}) {
-  const t = loader.load(`/tex/${name}.jpg`);
+  const t = loader.load(`${import.meta.env.BASE_URL}tex/${name}.jpg`);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat, repeat);
   t.anisotropy = 8;
@@ -37,7 +37,7 @@ function lateriteTexture() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   const x = c.getContext('2d');
   x.fillStyle = '#9a4a2a'; x.fillRect(0, 0, 512, 512);
-  loadImage('/tex/red_laterite_soil_stones_diffuse.jpg').then((img) => {
+  loadImage(`${import.meta.env.BASE_URL}tex/red_laterite_soil_stones_diffuse.jpg`).then((img) => {
     if (img) { x.globalAlpha = 1; x.drawImage(img, 0, 0, 512, 512); }
     // blocks: 3 across × 6 rows per tile (≈ 40 × 20 cm), staggered courses, each a slightly different red
     let s = 7; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
@@ -78,7 +78,7 @@ function plasterWindowTexture() {
     t.needsUpdate = true;
   };
   draw(null);
-  loadImage('/tex/painted_plaster_wall_diffuse.jpg').then(draw);
+  loadImage(`${import.meta.env.BASE_URL}tex/painted_plaster_wall_diffuse.jpg`).then(draw);
   return t;
 }
 
