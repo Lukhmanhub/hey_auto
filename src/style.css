@@ -279,6 +279,28 @@ kbd { display: inline-block; min-width: 22px; text-align: center; font: 700 13px
 #start:disabled { opacity: 0.6; cursor: wait; }
 #start:not(:disabled):hover, .pause-actions button:hover { filter: brightness(1.06); }
 
+/* ---------- mobile: please use a desktop ---------- */
+#mobile { overflow-y: auto; background: radial-gradient(ellipse at 50% 20%, #3a2f12, #0d0e0c 70%); place-items: start center; padding: 24px 16px; }
+.mobile-card { width: min(460px, 100%); padding: 26px 22px 22px; text-align: center; margin: auto; }
+.m-auto { position: relative; width: 150px; margin: 6px auto 10px; }
+.m-auto svg { width: 150px; height: 100px; animation: idle 0.18s ease-in-out infinite alternate; }
+@keyframes idle { to { transform: translateY(1px); } }
+.zz { position: absolute; right: -6px; top: -8px; font: 800 18px var(--ui); color: var(--auto); }
+.zz i, .zz b { font-style: normal; margin-left: 2px; }
+.zz i { font-size: 14px; } .zz b { font-size: 11px; }
+.zz, .zz i, .zz b { animation: zz 2.4s ease-in-out infinite; }
+@keyframes zz { 50% { opacity: 0.35; transform: translateY(-4px); } }
+.m-ml { font-family: var(--ml); font-size: 26px; line-height: 1.35; font-weight: 800; color: var(--auto); margin: 4px 0 4px; }
+.m-en { margin: 0 0 16px; font-size: 15px; color: var(--muted); font-style: italic; }
+.m-body { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-line); border-radius: 16px; padding: 12px 14px; text-align: left; }
+.m-ml2 { font-family: var(--ml); font-size: 16px; line-height: 1.6; margin: 0 0 6px; }
+.m-en2 { font-size: 13.5px; line-height: 1.5; color: var(--muted); margin: 0; }
+.m-cta { margin: 16px 0 14px; display: flex; flex-direction: column; gap: 2px; }
+.m-cta b { font-family: var(--ml); font-size: 18px; color: #fff; }
+.m-cta span { font-size: 14px; color: var(--muted); }
+#m-copy { width: 100%; border: 0; border-radius: 999px; padding: 14px 0 11px; font: 800 17px var(--ui); cursor: pointer; }
+.m-meter { margin: 14px 0 0; font-size: 12px; color: rgba(255, 90, 60, 0.75); font-family: var(--ui); }
+
 @media (max-width: 900px) {
   #hud { --s: 0.78; }
   .notes { width: 280px; }
