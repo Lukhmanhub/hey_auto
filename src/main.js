@@ -20,12 +20,85 @@ import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS
 
 const canvas = document.getElementById('game');
 // AA comes from the composer's multisampling, so the default framebuffer stays lean
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: 'high-performance' });
+// phones get an opaque canvas: if a frame ever comes out transparent they see black, not the page's blue
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: 'high-performance', ...(TOUCH && { alpha: false }) });
 stats.initAnalytics({ renderer, getStats: () => { try { return { rides: missions.trips, net: missions.cash, fines: missions.fines }; } catch { return {}; } } });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ---------- Phone graphics safety net ----------
+// Some phone GPUs (Samsung's Exynos/Xclipse, older Mali) choke on the full effect chain and show a blank
+// or blinking screen. Phones start on a safer level for those GPUs, step down by themselves when the first
+// frames come out blank or the GPU context crashes, and remember the level for next time. ?gfx=0|1|2 forces one.
+const gfx = { level: 0, checks: 0, blanks: 0, frame: 0 };
+if (TOUCH) {
+  let gpuName = '';
+  try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpuName = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch { /* hidden */ }
+  gfx.gpu = String(gpuName).slice(0, 40);
+  let saved = null;
+  try { saved = localStorage.getItem('heyauto-gfx'); } catch { /* private mode */ }
+  const forced = new URLSearchParams(location.search).get('gfx');
+  gfx.level = forced !== null ? clamp(+forced || 0, 0, 2) : saved !== null ? clamp(+saved || 0, 0, 2) : /Xclipse|Samsung|Mali-G(5|7)\d|PowerVR/i.test(gfx.gpu) ? 1 : 0;
+  renderer.debug.onShaderError = (gl, program, vs, fs) => {
+    const log = (gl.getShaderInfoLog(fs) || gl.getShaderInfoLog(vs) || gl.getProgramInfoLog(program) || '').split('\n')[0];
+    console.error('Shader error', log);
+    stats.track('err', { m: `gfx shader error · ${gfx.gpu} · ${log}`.slice(0, 80) });
+  };
+}
+function saveGfx(level, why) {
+  gfx.level = level; gfx.checks = 0; gfx.blanks = 0;
+  try { localStorage.setItem('heyauto-gfx', String(level)); } catch { /* private mode */ }
+  stats.track('err', { m: `gfx ${why} → level ${level} · ${gfx.gpu}`.slice(0, 80) });
+}
+// Phones throw the GPU context away when the browser goes to the background or runs short of memory.
+// The effect chain and the sky's lighting can't be rebuilt in place (that's the empty blue / blinking
+// screen), so reload the page once the player is looking at it again. If it died while they were
+// playing, it's probably memory: step the graphics down a level first.
+if (TOUCH) {
+  let lost = false;
+  const reload = () => { if (lost && !document.hidden) location.reload(); };
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    lost = true;
+    if (!document.hidden) saveGfx(Math.min(2, gfx.level + 1), 'context lost');
+    else stats.track('err', { m: `gfx context lost in background · ${gfx.gpu}`.slice(0, 80) });
+    setTimeout(reload, 1500);
+  });
+  canvas.addEventListener('webglcontextrestored', reload);
+  document.addEventListener('visibilitychange', reload);
+  window.addEventListener('pageshow', reload);
+}
+// A healthy frame has sky, road, walls and the auto in it; a broken one is a single flat colour.
+const _px = new Uint8Array(4);
+function frameIsBlank() {
+  const gl = renderer.getContext();
+  renderer.setRenderTarget(null);
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+  let lo = 255, hi = 0, range = 0;
+  for (let c = 0; c < 3; c++) {
+    lo = 255; hi = 0;
+    for (let i = 1; i <= 5; i++) for (let j = 1; j <= 4; j++) {
+      gl.readPixels(Math.floor((w * i) / 6), Math.floor((h * j) / 5), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, _px);
+      lo = Math.min(lo, _px[c]); hi = Math.max(hi, _px[c]);
+    }
+    range = Math.max(range, hi - lo);
+  }
+  return range < 10;
+}
+// called after each rendered frame: checks a handful of frames after start-up (and after each step down)
+function checkGfx() {
+  if (!TOUCH || gfx.checks >= 12 || document.hidden) return;
+  if (++gfx.frame % 20) return;
+  gfx.checks++;
+  if (frameIsBlank()) gfx.blanks++;
+  if (gfx.blanks >= 2) {
+    if (gfx.level >= 2) { gfx.checks = 99; stats.track('err', { m: `gfx still blank on safe mode · ${gfx.gpu}`.slice(0, 80) }); return; }
+    saveGfx(gfx.level + 1, 'blank screen');
+    post.setLevel(gfx.level);
+  }
+}
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 3000);
@@ -132,7 +205,7 @@ await fontsReady();
 // rigged CC0 townsfolk; if they fail to load the game falls back to the simple box people
 try { await loadHumans(); } catch (e) { console.warn('Characters failed to load, using simple people', e); }
 const world = buildWorld(scene);
-const post = new Post(renderer, scene, camera);
+const post = new Post(renderer, scene, camera, { mobile: TOUCH, level: gfx.level });
 if (TOUCH) post.maxDpr = 1.25;
 const vfx = new VFX(scene);
 const skies = await loadSkies(renderer);
@@ -366,6 +439,7 @@ startBtn.addEventListener('click', () => {
   hud.toast('info', `Auto rent ₹${missions.rent} paid`, `Today's goal: ₹${GOAL} net.${TOUCH ? '' : ' Press / for controls'}`);
   setDay(rollDay(), true); applySettings();
   stats.started(settings);
+  gfx.checks = 0; gfx.blanks = 0;   // look at the first frames on the road too
   stats.track('day', { k: today }, true);
 });
 
@@ -686,6 +760,7 @@ function frame(now) {
   updateEnv(running && !paused ? dt : 0);
   if (!paused) updateHumans(dt, camera);
   post.render(dt);
+  checkGfx();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

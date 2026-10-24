@@ -32,11 +32,14 @@ export function keralaGrade({ warmth = 1, lift = 0.95, greens = 1.1, size = 32 }
 }
 
 export class Post {
-  constructor(renderer, scene, camera) {
-    this.renderer = renderer;
+  // Phones can be put on a safer graphics level (main.js does it when a phone shows a blank screen):
+  //   level 0 = full chain · 1 = no multisampling, no AO, small shadows · 2 = no post chain at all
+  constructor(renderer, scene, camera, { mobile = false, level = 0 } = {}) {
+    this.renderer = renderer; this.scene = scene; this.camera = camera;
+    this.mobile = mobile; this.level = level; this.quality = 'high';
     renderer.toneMapping = THREE.NoToneMapping;       // tone mapping happens in the effect chain
     const w = window.innerWidth, h = window.innerHeight;
-    this.composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: Math.min(4, renderer.capabilities.maxSamples) });
+    this.composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: level ? 0 : Math.min(mobile ? 2 : 4, renderer.capabilities.maxSamples) });
     this.composer.addPass(new RenderPass(scene, camera));
 
     this.ao = new N8AOPostPass(scene, camera, w, h);
@@ -60,17 +63,29 @@ export class Post {
   setSize(w, h) { this.composer.setSize(w, h); }
   // High: AO + 4× MSAA + bloom · Medium: 2× MSAA, no AO · Low: no AO, no MSAA, no bloom, smaller shadows
   setQuality(q, sun) {
-    this.ao.enabled = q === 'high';
-    this.composer.multisampling = q === 'high' ? Math.min(4, this.renderer.capabilities.maxSamples) : q === 'medium' ? 2 : 0;
+    this.quality = q; this.sun = sun;
+    const safe = this.level > 0;
+    this.bypass = this.level >= 2;
+    this.ao.enabled = q === 'high' && !safe;
+    this.composer.multisampling = safe ? 0 : q === 'high' ? Math.min(4, this.renderer.capabilities.maxSamples) : q === 'medium' ? 2 : 0;
     this.bloom.blendMode.opacity.value = q === 'low' ? 0 : 1;
     this.grain.blendMode.opacity.value = q === 'low' ? 0 : 0.12;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' ? 1 : this.maxDpr ?? 1.5));
     this.composer.setSize(window.innerWidth, window.innerHeight);
-    if (sun) { const s = q === 'low' ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
+    if (sun) { const s = q === 'low' || (this.mobile && (q !== 'high' || safe)) ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
   }
+  setLevel(level) { this.level = level; this.setQuality(this.quality, this.sun); }
   render(dt) {
-    if (this.bypass) { this.renderer.render(this.composer.passes[0].scene, this.composer.passes[0].camera); return; }
-    this.renderer.toneMappingExposure = this.exposure;
+    const r = this.renderer;
+    r.toneMappingExposure = this.exposure;
+    if (this.bypass) {
+      // straight to the screen: the renderer does the tone mapping the effect chain normally would
+      r.toneMapping = THREE.ACESFilmicToneMapping;
+      r.setRenderTarget(null);
+      r.render(this.scene, this.camera);
+      return;
+    }
+    r.toneMapping = THREE.NoToneMapping;
     this.composer.render(dt);
   }
 }
