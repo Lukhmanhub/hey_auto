@@ -3,6 +3,7 @@
   "rewrites": [
     { "source": "/heyauto", "destination": "/index.html" },
     { "source": "/heyauto/", "destination": "/index.html" },
+    { "source": "/heyauto/analytics", "destination": "/analytics.html" },
     { "source": "/heyauto/:path+", "destination": "/:path+" }
   ]
 }

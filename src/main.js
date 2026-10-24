@@ -15,11 +15,13 @@ import { Rules } from './rules.js';
 import { Sound } from './audio.js';
 import { Hud } from './hud.js';
 import { TOUCH, touch, initTouch, releaseTouch, goFullscreen } from './touch.js';
+import * as stats from './analytics.js';
 import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
 const canvas = document.getElementById('game');
 // AA comes from the composer's multisampling, so the default framebuffer stays lean
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: 'high-performance' });
+stats.initAnalytics({ renderer, getStats: () => { try { return { rides: missions.trips, net: missions.cash, fines: missions.fines }; } catch { return {}; } } });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -162,6 +164,7 @@ const GOAL = 800;   // daily net target, after the auto's rent
 let goalHit = false;
 const rules = new Rules(world, (v) => {
   missions.onViolation(v);
+  stats.track('fine', { k: v.type, amt: v.fine });
   const pax = missions.state === 'riding' ? `−${v.hit}★ trip rating` : '';
   if (v.camera) {
     hud.toast('camera', v.title, [v.detail, pax].filter(Boolean).join(' · ') || 'Fine added to your account', `₹${v.fine}`);
@@ -259,6 +262,7 @@ function applySettings() {
 document.querySelectorAll('.seg[data-set] button').forEach((b) => b.addEventListener('click', () => {
   if (b.parentElement.dataset.set === 'day') { setDay(b.dataset.v, true); applySettings(); return; }
   settings[b.parentElement.dataset.set] = b.dataset.v; applySettings();
+  stats.track('set', { k: b.parentElement.dataset.set, v: b.dataset.v });
 }));
 document.getElementById('resume').addEventListener('click', () => setPaused(false));
 document.getElementById('showhelp').addEventListener('click', () => showHelp(true));
@@ -276,6 +280,7 @@ function showHelp(on) {
 
 function setPaused(p, menu = true) {
   paused = p;
+  stats.setPlaying(!p);
   if (p) { releaseTouch(actions); syncPauseExtras(); }
   document.getElementById('pause').hidden = !(p && menu);
   if (sound.ctx) p ? sound.ctx.suspend() : sound.ctx.resume();
@@ -344,6 +349,7 @@ function setRain(on, quiet) {
 
 startBtn.disabled = false;
 startBtn.textContent = 'Start shift';
+stats.loaded();
 startBtn.addEventListener('click', () => {
   goFullscreen();
   document.getElementById('title').hidden = true;
@@ -359,6 +365,8 @@ startBtn.addEventListener('click', () => {
   radio.discover().then((n) => { if (n) hud.toast('info', 'Radio stations updated', `${n} trending Malayalam stations added — ${TOUCH ? 'change stations from ⏸' : 'press Q'}`); });
   hud.toast('info', `Auto rent ₹${missions.rent} paid`, `Today's goal: ₹${GOAL} net.${TOUCH ? '' : ' Press / for controls'}`);
   setDay(rollDay(), true); applySettings();
+  stats.started(settings);
+  stats.track('day', { k: today }, true);
 });
 
 // ---------- Smoke, dust and spray ----------
@@ -495,13 +503,14 @@ function step(dt) {
   }
   for (const e of missions.events.splice(0)) {
     const name = missions.paxInfo?.name ?? '';
-    if (e.type === 'pickup') { sound.buzz(); haptic(0.1, 120); }
-    if (e.type === 'board') { sound.ding(); haptic(0.12, 80); }
+    if (e.type === 'pickup') { sound.buzz(); haptic(0.1, 120); stats.track('pickup', {}, true); }
+    if (e.type === 'board') { sound.ding(); haptic(0.12, 80); stats.track('board', {}, true); }
     if (e.type === 'say') { sound.pop(); sound.radio?.duck(4); hud.say(e.line, `Passenger · ${name}`); }
     if (e.type === 'paid') {
       hud.tripEnd(e, (p) => sound.tick(p));
+      stats.track('ride', { fare: e.fare, tip: e.tip, r: e.rating, d: e.dest, n: missions.trips });
       setTimeout(() => sound.cash(), 900);
-      if (!goalHit && missions.cash >= GOAL) { goalHit = true; setTimeout(() => hud.toast('cash', 'Daily goal reached!', 'Lakshyam ethi — anything more is bonus', `₹${missions.cash}`), 2500); }
+      if (!goalHit && missions.cash >= GOAL) { goalHit = true; stats.track('goal', { rides: missions.trips }, true); setTimeout(() => hud.toast('cash', 'Daily goal reached!', 'Lakshyam ethi — anything more is bonus', `₹${missions.cash}`), 2500); }
     }
   }
 
