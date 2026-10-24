@@ -1,4 +1,8 @@
 {
   "redirects": [{ "source": "/", "destination": "/heyauto/", "permanent": false }],
-  "rewrites": [{ "source": "/heyauto/:path*", "destination": "/:path*" }]
+  "rewrites": [
+    { "source": "/heyauto", "destination": "/index.html" },
+    { "source": "/heyauto/", "destination": "/index.html" },
+    { "source": "/heyauto/:path+", "destination": "/:path+" }
+  ]
 }
