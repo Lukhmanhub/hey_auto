@@ -865,24 +865,51 @@ export function buildWorld(scene) {
   scene.add(new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({ color: '#1a1a1a', transparent: true, opacity: 0.7 })));
 
   // ---------------- Traffic signals ----------------
+  // Big three-lamp heads with a glow on the lit lamp. Every approach gets two heads: one beside the stop
+  // line and one across the junction, which is the one you can actually see from the driver's seat once
+  // you've stopped (the near one ends up beside you).
   const signals = [];
-  const lampGeo = new THREE.SphereGeometry(0.13, 10, 8);
+  const lampGeo = new THREE.SphereGeometry(0.21, 14, 10);
+  const haloTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const LAMP = { R: '#ff2a1a', Y: '#ffb300', G: '#18e05a' };
   for (const [i, j] of SIGNALS) {
     const x = gx(i), z = gx(j);
-    const mk = (c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0 });
-    const mats = { x: { R: mk('#ff2a1a'), Y: mk('#ffb300'), G: mk('#18e05a') }, z: { R: mk('#ff2a1a'), Y: mk('#ffb300'), G: mk('#18e05a') } };
+    const mk = (c) => {
+      const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0 });
+      m.halo = new THREE.SpriteMaterial({ map: haloTex, color: c, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, fog: false });
+      return m;
+    };
+    const mats = { x: { R: mk(LAMP.R), Y: mk(LAMP.Y), G: mk(LAMP.G) }, z: { R: mk(LAMP.R), Y: mk(LAMP.Y), G: mk(LAMP.G) } };
     for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lx = fz, lz = -fx;
       const px = x - fx * 9.6 + lx * 6.4, pz = z - fz * 9.6 + lz * 6.4;
-      solid.add(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 8), '#3a3a3a', px, 2.1, pz);
-      solid.box(0.42, 1.15, 0.36, '#151515', px, 4.0, pz);
+      solid.add(new THREE.CylinderGeometry(0.11, 0.13, 4.6, 8), '#3a3a3a', px, 2.3, pz);
       col.addCentered(px, pz, 0.4, 0.4, 'pole');
-      const axis = fx ? 'x' : 'z';
-      [['R', 4.36], ['Y', 4.0], ['G', 3.64]].forEach(([c, y]) => {
-        const l = new THREE.Mesh(lampGeo, mats[axis][c]);
-        l.position.set(px - fx * 0.19, y, pz - fz * 0.19);
-        scene.add(l);
-      });
+    }
+    for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const lx = fz, lz = -fx, axis = fx ? 'x' : 'z';
+      // near head (beside the stop line, on your left) and far head (across the junction, on your right)
+      for (const [hx, hz] of [[x - fx * 9.6 + lx * 6.4, z - fz * 9.6 + lz * 6.4], [x + fx * 9.6 - lx * 6.4, z + fz * 9.6 - lz * 6.4]]) {
+        const bx = hx - fx * 0.24, bz = hz - fz * 0.24;
+        solid.box(fx ? 0.3 : 0.72, 1.9, fx ? 0.72 : 0.3, '#151515', bx, 4.35, bz);
+        // yellow-and-black backing board, like Kerala's junction signals
+        solid.box(fx ? 0.04 : 1.06, 2.2, fx ? 1.06 : 0.04, '#e8b800', bx + fx * 0.15, 4.35, bz + fz * 0.15);
+        [['R', 4.95], ['Y', 4.35], ['G', 3.75]].forEach(([c, y]) => {
+          const lp = new THREE.Vector3(hx - fx * 0.42, y, hz - fz * 0.42);
+          const l = new THREE.Mesh(lampGeo, mats[axis][c]);
+          l.position.copy(lp); scene.add(l);
+          solid.box(fx ? 0.36 : 0.5, 0.05, fx ? 0.5 : 0.36, '#111', lp.x - fx * 0.14, y + 0.25, lp.z - fz * 0.14);   // sun shade
+          const h = new THREE.Sprite(mats[axis][c].halo);
+          h.position.set(lp.x - fx * 0.1, y, lp.z - fz * 0.1); h.scale.setScalar(1.5);
+          scene.add(h);
+        });
+      }
     }
     signals.push({
       i, j, x, z, mats, offset: rand() * 20,
@@ -890,6 +917,12 @@ export function buildWorld(scene) {
         const c = (t + this.offset) % 20;
         if (axis === 'x') return c < 8 ? 'G' : c < 10 ? 'Y' : 'R';
         return c < 10 ? 'R' : c < 18 ? 'G' : 'Y';
+      },
+      // seconds until this axis's light changes (for the HUD countdown)
+      timeLeft(axis, t) {
+        const c = (t + this.offset) % 20;
+        const edges = axis === 'x' ? [8, 10, 20] : [10, 18, 20];
+        return edges.find((e) => e > c) - c;
       },
     });
   }
@@ -925,6 +958,37 @@ export function buildWorld(scene) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   };
   const noEntry = roundSign('—', '#d32f2f', '#d32f2f');
+  // Overhead NO ENTRY board across the wrong-way end of every one-way block: a pole-side sign is
+  // easy to miss from the chase camera, a board across the whole road isn't.
+  const gantryTex = () => {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 160;
+    const x = c.getContext('2d');
+    x.fillStyle = '#c62818'; x.fillRect(0, 0, 1024, 160);
+    x.strokeStyle = '#fff'; x.lineWidth = 8; x.strokeRect(10, 10, 1004, 140);
+    for (const cx of [90, 934]) {   // no-entry roundels at both ends
+      x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, 80, 54, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#c62818'; x.beginPath(); x.arc(cx, 80, 46, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#fff'; x.fillRect(cx - 32, 70, 64, 20);
+    }
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = '800 62px "Baloo Chettan 2", sans-serif'; x.fillText('NO ENTRY · ONE WAY', 512, 62);
+    x.font = '600 34px "Anek Malayalam", sans-serif'; x.fillText('പ്രവേശനമില്ല · വൺ വേ', 512, 120);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+  };
+  // along: position on the road's axis · line: the road's other coordinate · vertical: road runs along z · n: facing (+1/−1)
+  const gantry = (along, line, vertical, n) => {
+    const P = (a, l) => (vertical ? [line + l, a] : [a, line + l]);
+    for (const l of [-7, 7]) {
+      const [px, pz] = P(along, l);
+      solid.add(new THREE.CylinderGeometry(0.12, 0.14, 5.9, 8), '#d9d4c8', px, 2.95, pz);
+      col.addCentered(px, pz, 0.35, 0.35, 'pole');
+    }
+    const [cx, cz] = P(along, 0);
+    solid.box(vertical ? 14.4 : 0.16, 0.16, vertical ? 0.16 : 14.4, '#d9d4c8', cx, 5.75, cz);
+    solid.box(vertical ? 7.4 : 0.08, 1.25, vertical ? 0.08 : 7.4, '#7a1209', cx, 5.0, cz);
+    const [nx, nz] = vertical ? [0, n] : [n, 0];
+    addSign('gantry', gantryTex, 7.2, 1.12, cx + nx * 0.05, 5.0, cz + nz * 0.05, nx, nz);
+  };
   for (const k in ONE_WAY_ROWS) {
     const z = gx(+k), dir = ONE_WAY_ROWS[k];
     for (let m = 0; m < N; m++) {
@@ -932,6 +996,7 @@ export function buildWorld(scene) {
       // ONE WAY on traffic's left (−z side for +x travel), facing oncoming traffic
       roadSign('oneway', owTex, 1.6, 0.6, start + dir * 10, z - dir * 6.6, -dir, 0);
       roadSign('noentry', noEntry, 0.9, 0.9, end - dir * 10, z + dir * 6.6, dir, 0);
+      gantry(end - dir * 11.5, z, false, dir);
     }
   }
   for (const k in ONE_WAY_COLS) {
@@ -941,6 +1006,7 @@ export function buildWorld(scene) {
       const start = dir > 0 ? gx(m) : gx(m + 1), end = dir > 0 ? gx(m + 1) : gx(m);
       roadSign('oneway', owTex, 1.6, 0.6, x + dir * 6.6, start + dir * 10, 0, -dir);
       roadSign('noentry', noEntry, 0.9, 0.9, x - dir * 6.6, end - dir * 10, 0, dir);
+      gantry(end - dir * 11.5, x, true, dir);
     }
   }
 
@@ -1080,7 +1146,7 @@ export function buildWorld(scene) {
   function update(t, dt) {
     for (const s of signals) for (const axis of ['x', 'z']) {
       const st = s.state(axis, t);
-      for (const c of ['R', 'Y', 'G']) s.mats[axis][c].emissiveIntensity = st === c ? 3.2 : 0.02;
+      for (const c of ['R', 'Y', 'G']) { const m = s.mats[axis][c]; m.emissiveIntensity = st === c ? 3.2 : 0.02; m.halo.opacity = st === c ? 0.85 : 0; }
     }
     for (const a of animated) a(t, dt);
     swayU.uTime.value = t;

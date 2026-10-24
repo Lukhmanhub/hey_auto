@@ -278,6 +278,34 @@ export class Hud {
     return ticked;
   }
 
+  // ---------------- Road alert: signal ahead, one-way ahead, wrong way ----------------
+  roadAlert(st) {
+    const el = $('alert');
+    let kind = null, title = '', sub = '', count = '', light = '';
+    if (st?.wrongWay) {
+      kind = 'wrongway'; title = 'Wrong way — this is a one-way!';
+      sub = st.wrongWayLeft > 0 ? 'Turn back now · AI camera fine coming' : 'AI camera caught you';
+      count = st.wrongWayLeft > 0 ? `${Math.ceil(st.wrongWayLeft)}` : '';
+    } else if (st?.noEntryAhead) {
+      kind = 'noentry'; title = 'No entry — one-way ahead'; sub = 'വൺ വേ · take another road';
+    } else if (st?.signal) {
+      const s = st.signal;
+      kind = 'signal'; light = s.state; count = `${s.left}`;
+      title = s.state === 'R' ? 'Red signal ahead' : s.state === 'Y' ? 'Signal turning red' : 'Green signal';
+      sub = s.state === 'R' ? 'നിർത്തുക · stop at the white line' : s.state === 'Y' ? 'പതുക്കെ · slow down' : 'പോകാം · go ahead';
+    }
+    if (!kind) { if (!el.hidden) el.hidden = true; return; }
+    el.hidden = false;
+    if (el.dataset.kind !== kind) el.dataset.kind = kind;
+    if (el.dataset.light !== light) {
+      el.dataset.light = light;
+      el.querySelectorAll('.ra-light i').forEach((i) => i.classList.toggle('on', i.dataset.c === light));
+    }
+    if ($('alert-t').textContent !== title) $('alert-t').textContent = title;
+    if ($('alert-s').textContent !== sub) $('alert-s').textContent = sub;
+    if ($('alert-n').textContent !== count) $('alert-n').textContent = count;
+  }
+
   // ---------------- Panels ----------------
   update(player, missions, rules, radio, goal) {
     const m = missions;
@@ -287,6 +315,7 @@ export class Hud {
     $('zone').textContent = rules.status?.wrongWay ? 'One-way — wrong way!' : rules.status?.wrongSide ? 'Keep left!' :
       ({ road: 'On road', footpath: 'On the footpath!', alley: 'Idavazhi · alley', yard: 'Compound', paddy: 'Paddy field · mud', grass: 'Off-road' }[player.zone] ?? '');
     $('zone').classList.toggle('bad', !!(rules.status?.wrongSide || rules.status?.wrongWay || player.zone === 'footpath'));
+    this.roadAlert(rules.status);
 
     // earnings vs daily goal
     const net = m.cash;

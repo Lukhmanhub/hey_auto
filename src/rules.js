@@ -13,6 +13,8 @@ export const VIOLATIONS = {
   ped: { title: 'Hit a pedestrian', fine: 250, hit: 2, camera: true },
 };
 
+const WRONG_WAY_GRACE = 3;   // seconds on a one-way, the wrong way, before the AI camera fines you
+
 export function roadInfo(x, z) {
   const i = Math.round((x + HALF) / B), j = Math.round((z + HALF) / B);
   const dx = x - gx(i), dz = z - gx(j);
@@ -62,7 +64,36 @@ export class Rules {
     this.timers.wrongside = wrongSide ? this.timers.wrongside + dt : 0;
     this.timers.wrongway = wrongWay ? this.timers.wrongway + dt : 0;
     if (this.timers.wrongside > 3) this.fire('wrongside');
-    if (this.timers.wrongway > 1.2) this.fire('wrongway');
+    // a few seconds' grace to notice the warning and turn back before the camera fines you
+    if (this.timers.wrongway > WRONG_WAY_GRACE) this.fire('wrongway');
+
+    // look ahead along the direction of travel: about to enter a one-way the wrong way?
+    let noEntryAhead = false;
+    const sg = Math.sign(v) || 1, mx = f.x * sg, mz = f.z * sg;
+    if (moving && !wrongWay) {
+      for (const d of [8, 16, 26]) {
+        const a = roadInfo(x + mx * d, z + mz * d);
+        if (!a || a.junction) continue;
+        const along = a.axis === 'z' ? mz : mx;
+        if (Math.abs(along) < 0.6) continue;
+        const ow = a.axis === 'z' ? ONE_WAY_COLS[a.line] : ONE_WAY_ROWS[a.line];
+        if (ow !== undefined && Math.sign(along) !== ow) { noEntryAhead = true; break; }
+      }
+    }
+
+    // the next signal straight ahead (for the HUD's signal light + countdown)
+    let signal = null;
+    if (moving && info && !info.junction && sg > 0) {
+      const along = info.axis === 'z' ? mz : mx;
+      if (Math.abs(along) > 0.6) {
+        const pos = info.axis === 'z' ? z : x, dir = Math.sign(along);
+        const k = dir > 0 ? Math.ceil((pos + HALF) / B) : Math.floor((pos + HALF) / B);
+        const dist = Math.abs(gx(k) - pos) - ROAD_HALF;
+        const si = info.axis === 'z' ? info.line : k, sj = info.axis === 'z' ? k : info.line;
+        const sig = this.world.signals.find((q) => q.i === si && q.j === sj);
+        if (sig && dist > 0 && dist < 55) signal = { state: sig.state(info.axis, t), left: Math.ceil(sig.timeLeft(info.axis, t)), dist };
+      }
+    }
 
     const over = player.kmh > SPEED_LIMIT + 3 && player.zone === 'road';
     this.timers.overspeed = over ? this.timers.overspeed + dt : 0;
@@ -84,6 +115,6 @@ export class Rules {
       if (inside) this.prevInside.add(id); else this.prevInside.delete(id);
     }
     this.prev = { x, z };
-    this.status = { wrongSide, wrongWay, over };
+    this.status = { wrongSide, wrongWay, over, noEntryAhead, signal, wrongWayLeft: wrongWay ? Math.max(0, WRONG_WAY_GRACE - this.timers.wrongway) : 0 };
   }
 }
