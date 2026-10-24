@@ -64,7 +64,7 @@ export class Post {
     this.composer.multisampling = q === 'high' ? Math.min(4, this.renderer.capabilities.maxSamples) : q === 'medium' ? 2 : 0;
     this.bloom.blendMode.opacity.value = q === 'low' ? 0 : 1;
     this.grain.blendMode.opacity.value = q === 'low' ? 0 : 0.12;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' ? 1 : 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' ? 1 : this.maxDpr ?? 1.5));
     this.composer.setSize(window.innerWidth, window.innerHeight);
     if (sun) { const s = q === 'low' ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
   }

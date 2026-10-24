@@ -279,30 +279,132 @@ kbd { display: inline-block; min-width: 22px; text-align: center; font: 700 13px
 #start:disabled { opacity: 0.6; cursor: wait; }
 #start:not(:disabled):hover, .pause-actions button:hover { filter: brightness(1.06); }
 
-/* ---------- mobile: please use a desktop ---------- */
-#mobile { overflow-y: auto; background: radial-gradient(ellipse at 50% 20%, #3a2f12, #0d0e0c 70%); place-items: start center; padding: 24px 16px; }
-.mobile-card { width: min(460px, 100%); padding: 26px 22px 22px; text-align: center; margin: auto; }
-.m-auto { position: relative; width: 150px; margin: 6px auto 10px; }
-.m-auto svg { width: 150px; height: 100px; animation: idle 0.18s ease-in-out infinite alternate; }
-@keyframes idle { to { transform: translateY(1px); } }
-.zz { position: absolute; right: -6px; top: -8px; font: 800 18px var(--ui); color: var(--auto); }
-.zz i, .zz b { font-style: normal; margin-left: 2px; }
-.zz i { font-size: 14px; } .zz b { font-size: 11px; }
-.zz, .zz i, .zz b { animation: zz 2.4s ease-in-out infinite; }
-@keyframes zz { 50% { opacity: 0.35; transform: translateY(-4px); } }
-.m-ml { font-family: var(--ml); font-size: 26px; line-height: 1.35; font-weight: 800; color: var(--auto); margin: 4px 0 4px; }
-.m-en { margin: 0 0 16px; font-size: 15px; color: var(--muted); font-style: italic; }
-.m-body { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-line); border-radius: 16px; padding: 12px 14px; text-align: left; }
-.m-ml2 { font-family: var(--ml); font-size: 16px; line-height: 1.6; margin: 0 0 6px; }
-.m-en2 { font-size: 13.5px; line-height: 1.5; color: var(--muted); margin: 0; }
-.m-cta { margin: 16px 0 14px; display: flex; flex-direction: column; gap: 2px; }
-.m-cta b { font-family: var(--ml); font-size: 18px; color: #fff; }
-.m-cta span { font-size: 14px; color: var(--muted); }
-#m-copy { width: 100%; border: 0; border-radius: 999px; padding: 14px 0 11px; font: 800 17px var(--ui); cursor: pointer; }
-.m-meter { margin: 14px 0 0; font-size: 12px; color: rgba(255, 90, 60, 0.75); font-family: var(--ui); }
-
 @media (max-width: 900px) {
   #hud { --s: 0.78; }
   .notes { width: 280px; }
   .logo .ml { font-size: 44px; }
 }
+
+/* =====================================================================
+   Phones & tablets (html.touch). Everything below only applies there;
+   the desktop layout above is left exactly as it is.
+   ===================================================================== */
+.t-only, #touch, #rotate { display: none; }
+html.touch .t-only { display: flex; }
+html.touch body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html.touch {
+  --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px); --sb: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---- compact HUD: each cluster gets its own scale (--z), offsets are written in real pixels / z ---- */
+html.touch .hud-g { zoom: calc(var(--s) * var(--z, 0.6)); }
+html.touch .earn { --z: 0.62; top: calc(10px / 0.62); left: calc((12px + var(--sl)) / 0.62); padding-bottom: 6px; }
+html.touch .earn-sub { display: none; }
+html.touch .map { --z: 0.5; top: calc(12px / 0.5); right: calc((14px + var(--sr)) / 0.5); pointer-events: auto; transition: zoom 0.3s ease; }
+html.touch .map.big { --z: 0.95; }
+html.touch .clock { --z: 0.6; top: calc(128px / 0.6); right: calc((8px + var(--sr)) / 0.6); }
+html.touch .map.big ~ .clock { opacity: 0; }
+html.touch .radio { --z: 0.66; top: calc(104px / 0.66); right: calc((196px + var(--sr)) / 0.66); }
+html.touch .r-chip, html.touch .r-panel .keys { display: none; }
+html.touch .r-panel { margin-top: 0; }
+html.touch .speech { --z: 0.7; top: calc(8px / 0.7); max-width: 52vw; padding: 7px 18px; }
+html.touch .notes { --z: 0.58; top: calc(160px / 0.58); left: auto; right: calc((12px + var(--sr)) / 0.58); width: 320px; align-items: flex-end; }
+html.touch .notes .note:nth-child(n + 2) { display: none; }   /* newest only; it sits clear of the pedals */
+html.touch .trip-end { --z: 0.62; top: 16%; }
+
+/* ride card: under the earnings, only while there is a ride */
+html.touch .phone-mount { --z: 0.52; top: calc(62px / 0.52); left: calc((12px + var(--sl)) / 0.52); right: auto; bottom: auto; }
+html.touch .phone-mount .clamp, html.touch .phone-mount .arm { display: none; }
+html.touch #hud .phone-mount { transform: none; }
+html.touch #hud[data-state='cruise'] .phone-mount { opacity: 0; transform: translateX(-30px); }
+html.touch .phone { transform: rotateZ(var(--bz, 0deg)) translateX(var(--bx, 0px)); }
+
+/* fare meter + speedo between the thumbs */
+html.touch .meter-unit { --z: 0.5; bottom: calc((10px + var(--sb)) / 0.5); }
+html.touch #hud .meter-unit { opacity: 1; }
+html.touch .cluster { --z: 0.44; left: calc((190px + var(--sl)) / 0.44); bottom: calc((6px + var(--sb)) / 0.44); }
+html.touch #hud .cluster { opacity: 1; }
+html.touch .limit { display: none; }
+html.touch .cluster-side { position: absolute; left: 0; bottom: 100%; margin: 0 0 4px; }
+html.touch .zone:not(.bad) { display: none; }
+html.touch .zone { font-size: 26px; }
+
+/* world bubbles */
+html.touch .bub { max-width: 190px; padding: 4px 10px 5px; border-top-width: 3px; }
+html.touch .bub b { font-size: 14px; }
+html.touch .bub .mg, html.touch .bub .en { font-size: 10px; }
+html.touch .bub small { font-size: 9px; }
+
+/* ---- the controls ---- */
+html.touch #touch { display: block; position: absolute; inset: 0; pointer-events: none; }
+#touch button {
+  pointer-events: auto; position: absolute; border: 0; padding: 0; margin: 0; cursor: pointer; touch-action: none;
+  display: grid; place-items: center; color: #fff;
+  background: rgba(16, 17, 15, 0.42); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.22), 0 6px 18px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: transform 0.08s ease, background 0.08s ease;
+}
+#touch button svg { width: 46%; height: 46%; pointer-events: none; }
+#touch button.on { transform: scale(0.93); background: rgba(247, 198, 0, 0.88); color: var(--ink); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5), 0 0 22px rgba(247, 198, 0, 0.45); }
+
+.t-steer button { bottom: calc(16px + var(--sb)); width: 78px; height: 78px; border-radius: 50%; }
+.t-steer [data-k='left'] { left: calc(14px + var(--sl)); }
+.t-steer [data-k='right'] { left: calc(102px + var(--sl)); }
+#touch .t-horn { left: calc(52px + var(--sl)); bottom: calc(108px + var(--sb)); width: 64px; height: 50px; border-radius: 16px; gap: 0; align-content: center; }
+.t-horn svg { width: 22px !important; height: 22px !important; }
+.t-horn span { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; line-height: 1; margin-top: 1px; }
+#touch .t-horn.on { background: rgba(255, 255, 255, 0.9); }
+
+/* pedals: ridged rubber, gas tall on the right edge, brake beside it */
+.t-pedals button { border-radius: 18px; align-content: end; padding-bottom: 10px; }
+.t-pedals button i { position: absolute; inset: 12px 14px 32px; border-radius: 8px; background: repeating-linear-gradient(180deg, rgba(255,255,255,0.28) 0 4px, transparent 4px 11px); pointer-events: none; }
+.t-pedals button span { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; pointer-events: none; }
+#touch .t-gas { right: calc(14px + var(--sr)); bottom: calc(16px + var(--sb)); width: 76px; height: 128px; }
+#touch .t-gas:not(.on) { background: rgba(26, 60, 34, 0.5); }
+#touch .t-gas.on { background: rgba(47, 211, 108, 0.9); }
+#touch .t-brake { right: calc(100px + var(--sr)); bottom: calc(16px + var(--sb)); width: 76px; height: 96px; }
+#touch .t-brake:not(.on) { background: rgba(70, 22, 18, 0.5); }
+#touch .t-brake.on { background: rgba(255, 74, 58, 0.9); color: #fff; }
+#touch .t-hb { right: calc(100px + var(--sr)); bottom: calc(122px + var(--sb)); width: 76px; height: 40px; border-radius: 14px; font: 800 14px var(--ui); letter-spacing: 0.06em; padding-top: 2px; }
+
+/* small round buttons beside the minimap */
+.t-acts button { right: calc(140px + var(--sr)); width: 42px; height: 42px; border-radius: 50%; }
+.t-acts [data-act='pause'] { top: 10px; }
+.t-acts [data-act='camera'] { top: 60px; }
+.t-acts [data-act='radio'] { top: 110px; }
+.t-acts button:active { background: rgba(247, 198, 0, 0.88); color: var(--ink); }
+
+/* ---- title, pause and help on a small landscape screen ---- */
+html.touch .overlay { overflow-y: auto; place-items: start center; padding: max(10px, env(safe-area-inset-top)) calc(12px + var(--sr)) 12px calc(12px + var(--sl)); }
+html.touch .card { margin: auto; width: min(620px, 100%); padding: 18px 20px 16px; border-radius: 22px; }
+html.touch .logo .ml { font-size: 38px; }
+html.touch .logo .en { font-size: 14px; }
+html.touch .pause-card .logo .ml { font-size: 30px; }
+html.touch .tag { font-size: 14px; margin: 4px 0 10px; }
+html.touch .how { gap: 4px; font-size: 12.5px; line-height: 1.35; }
+html.touch .how > div:nth-child(n + 4) { display: none; }
+html.touch #title .ctrl, html.touch #showhelp { display: none; }
+.t-ctrl { flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 12px; font-size: 12.5px; color: var(--muted); }
+.t-ctrl b { color: var(--auto); }
+html.touch #start { padding: 12px 0 9px; font-size: 18px; }
+html.touch .settings { gap: 8px; margin: 2px 0 14px; }
+html.touch .set { font-size: 14px; }
+html.touch .seg button { padding: 7px 12px 5px; font-size: 13px; }
+html.touch .seg button.ro { color: var(--text); min-width: 30px; cursor: default; }
+.seg-act button:active { background: var(--auto); color: var(--ink); }
+html.touch .pause-actions button { padding: 11px 0 8px; font-size: 16px; }
+html.touch .follow { margin-top: 10px; font-size: 12px; }
+.t-radio { align-items: center; gap: 6px; padding: 3px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); max-width: 62%; }
+.t-radio button { flex: none; width: 34px; height: 30px; border: 0; border-radius: 99px; background: var(--auto); color: var(--ink); font-size: 13px; cursor: pointer; }
+.t-radio span { min-width: 0; flex: 1; text-align: center; font-family: var(--lcd); font-size: 13px; color: #8ff5cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+
+/* ---- hold the phone sideways ---- */
+@media (orientation: portrait) {
+  html.touch #rotate { display: grid; z-index: 50; background: radial-gradient(ellipse at 50% 30%, #3a2f12, #0d0e0c 70%); place-items: center; }
+}
+.rotate-card { width: min(380px, 100%); text-align: center; padding: 26px 22px 22px; }
+.r-phone { width: 54px; height: 92px; margin: 10px auto 18px; border-radius: 12px; border: 4px solid var(--auto); position: relative; animation: turn 2.4s cubic-bezier(0.6, 0, 0.3, 1) infinite; }
+.r-phone i { position: absolute; left: 50%; bottom: 5px; width: 14px; height: 3px; margin-left: -7px; border-radius: 2px; background: var(--auto); }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+.m-ml { font-family: var(--ml); font-size: 24px; line-height: 1.35; font-weight: 800; color: var(--auto); margin: 4px 0 6px; }
+.m-en { margin: 0; font-size: 15px; color: var(--muted); font-style: italic; }

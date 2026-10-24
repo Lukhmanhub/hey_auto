@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Hey Auto — ഹേ ഓട്ടോ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -53,6 +53,24 @@
       <div class="phone" id="phone"><div class="cam"></div><div class="screen" id="ride"></div></div>
       <div class="clamp"></div><div class="arm"></div>
     </div>
+
+    <div id="touch">
+      <div class="t-acts">
+        <button class="t-btn" data-act="pause" aria-label="Pause and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+        <button class="t-btn" data-act="camera" aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></button>
+        <button class="t-btn" data-act="radio" aria-label="Next radio station"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg></button>
+      </div>
+      <button class="t-horn" data-act="horn" aria-label="Horn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg><span>HORN</span></button>
+      <div class="t-steer">
+        <button data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <div class="t-pedals">
+        <button class="t-hb" data-k="brake" aria-label="Hand brake">(P)</button>
+        <button class="t-brake" data-k="down" aria-label="Brake and reverse"><i></i><span>BRAKE</span></button>
+        <button class="t-gas" data-k="up" aria-label="Accelerate"><i></i><span>GAS</span></button>
+      </div>
+    </div>
   </div>
 
   <div id="help" class="overlay" hidden>
@@ -97,6 +115,9 @@
         <span><kbd>R</kbd> monsoon rain</span>
         <span><kbd>T</kbd> skip an hour</span>
       </div>
+      <div class="t-ctrl t-only">
+        <span><b>◀ ▶</b> steer</span><span><b>GAS</b> · <b>BRAKE</b> pedals (hold brake to reverse)</span><span><b>(P)</b> hand brake</span><span><b>HORN</b></span><span><b>⏸</b> radio, rain, time & settings</span>
+      </div>
       <button id="start" disabled>Loading town…</button>
     </div>
   </div>
@@ -108,6 +129,9 @@
       <div class="settings">
         <div class="set"><span>HUD size</span><div class="seg" data-set="scale"><button data-v="0.85">S</button><button data-v="1">M</button><button data-v="1.15">L</button></div></div>
         <div class="set"><span>Graphics</span><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
+        <div class="set t-only"><span>Radio</span><div class="t-radio"><button data-radio="prev" aria-label="Previous station">◀</button><span id="p-station">Off</span><button data-radio="next" aria-label="Next station">▶</button></div></div>
+        <div class="set t-only"><span>Radio volume</span><div class="seg seg-act"><button data-radio="down">−</button><button class="ro" id="p-vol" disabled>5</button><button data-radio="up">+</button><button data-radio="off">Off</button></div></div>
+        <div class="set t-only"><span>Town</span><div class="seg seg-act"><button data-more="rain" id="p-rain">Rain</button><button data-more="hour">+1 hour</button><button data-more="mute" id="p-mute">Sound on</button></div></div>
         <div class="set"><span>Dialogue</span><div class="seg" data-set="lang"><button data-v="ml">മലയാളം</button><button data-v="mlmg">+ Manglish</button><button data-v="all">+ English</button></div></div>
       </div>
       <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button></div>
@@ -115,48 +139,24 @@
     </div>
   </div>
 
-  <div id="mobile" class="overlay" hidden>
-    <div class="card mobile-card">
-      <div class="m-auto" aria-hidden="true">
-        <svg viewBox="0 0 130 90"><path d="M22 18c0-6 4-9 10-9h52c10 0 16 6 20 14l6 12H22z" fill="#151515"/><path d="M24 35h86c6 0 10 4 10 10v13H24z" fill="#f7c600"/><path d="M98 35h12c6 0 10 4 10 10v4H98z" fill="#f7c600"/><path d="M100 23l6 12H98V23z" fill="#8fb1c4"/><rect x="26" y="20" width="4" height="15" fill="#151515"/><rect x="96" y="20" width="3" height="15" fill="#151515"/><rect x="38" y="38" width="44" height="6" rx="2" fill="#151515"/><rect x="24" y="52" width="96" height="5" fill="#151515"/><circle cx="114" cy="47" r="3.5" fill="#fff6cf"/><circle cx="40" cy="66" r="10" fill="#151515"/><circle cx="40" cy="66" r="4.5" fill="#999"/><circle cx="106" cy="66" r="10" fill="#151515"/><circle cx="106" cy="66" r="4.5" fill="#999"/></svg>
-        <span class="zz">z<i>z</i><b>z</b></span>
-      </div>
-      <h1 class="m-ml">അയ്യോ ചേട്ടാ, ഈ ഓട്ടോ ഫോണിൽ കേറില്ല!</h1>
-      <p class="m-en">Ayyo chetta, this auto doesn't fit inside a phone!</p>
-      <div class="m-body">
-        <p class="m-ml2">ഹാൻഡിലും മീറ്ററും ഹോണും എല്ലാം കീബോർഡിലാ. ഫോണിൽ ഓടിക്കാൻ നോക്കിയാൽ ഓട്ടോ സ്റ്റാൻഡിൽ നിന്ന് അനങ്ങില്ല, ഡ്രൈവർ ചായ കുടിക്കാൻ പോകും.</p>
-        <p class="m-en2">Handlebar, meter, horn: it all runs on a keyboard. Try driving it on a phone and the auto won't leave the stand. The driver has gone for a chaya.</p>
-      </div>
-      <div class="m-cta">
-        <b>ലാപ്ടോപ്പിലോ കമ്പ്യൂട്ടറിലോ തുറക്കൂ, ഓട്ടം റെഡി!</b>
-        <span>Open it on a laptop or desktop. Your first fare is waiting.</span>
-      </div>
-      <button id="m-copy" class="primary">Copy link for my laptop</button>
-      <p class="m-meter">Meter is still on minimum charge · ₹30 · മീറ്റർ ഇപ്പോഴും മിനിമം ചാർജിലാ</p>
-      <p class="follow">Meanwhile, follow me on <a href="https://www.instagram.com/lukhman.designs/" target="_blank" rel="noopener">Instagram @lukhman.designs</a></p>
+  <div id="rotate" class="overlay">
+    <div class="card rotate-card">
+      <div class="r-phone" aria-hidden="true"><i></i></div>
+      <h1 class="m-ml">ചേട്ടാ, ഫോൺ ഒന്ന് ചെരിച്ച് പിടിക്ക്!</h1>
+      <p class="m-en">Turn your phone sideways, chetta. An auto doesn't drive standing up.</p>
     </div>
   </div>
 
   <script type="module">
-    // Phones and tablets get a friendly "please use a desktop" card; the game itself isn't even loaded.
+    // Phones and tablets get touch controls and a compact HUD (html.touch); desktop is untouched.
     const ua = navigator.userAgent;
     const touchOnly = matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
     const iPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
-    const mobile = /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(ua) || iPadOS || touchOnly || Math.min(innerWidth, innerHeight) < 500;
-    if (mobile) {
-      document.getElementById('title').hidden = true;
-      document.getElementById('mobile').hidden = false;
-      const btn = document.getElementById('m-copy');
-      btn.addEventListener('click', async () => {
-        const url = location.href.split('#')[0];
-        try {
-          if (navigator.share) await navigator.share({ title: 'Hey Auto · ഹേ ഓട്ടോ', text: 'Open this on your laptop and drive an auto around Kerala!', url });
-          else { await navigator.clipboard.writeText(url); btn.textContent = 'Link copied! Now go find that laptop'; }
-        } catch { try { await navigator.clipboard.writeText(url); btn.textContent = 'Link copied! Now go find that laptop'; } catch { btn.textContent = url; } }
-      });
-    } else {
-      import('./src/main.js');
+    if (/Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(ua) || iPadOS || touchOnly) {
+      document.documentElement.classList.add('touch');
+      document.querySelector('meta[name=viewport]').content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
     }
+    import('./src/main.js');
   </script>
 </body>
 </html>

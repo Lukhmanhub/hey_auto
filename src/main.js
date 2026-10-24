@@ -14,12 +14,13 @@ import { Missions } from './missions.js';
 import { Rules } from './rules.js';
 import { Sound } from './audio.js';
 import { Hud } from './hud.js';
+import { TOUCH, touch, initTouch, releaseTouch, goFullscreen } from './touch.js';
 import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
 const canvas = document.getElementById('game');
 // AA comes from the composer's multisampling, so the default framebuffer stays lean
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -130,6 +131,7 @@ await fontsReady();
 try { await loadHumans(); } catch (e) { console.warn('Characters failed to load, using simple people', e); }
 const world = buildWorld(scene);
 const post = new Post(renderer, scene, camera);
+if (TOUCH) post.maxDpr = 1.25;
 const vfx = new VFX(scene);
 const skies = await loadSkies(renderer);
 scene.environment = skies.clear;
@@ -213,14 +215,16 @@ window.addEventListener('keyup', (e) => {
   if (KEYS[e.code]) input[KEYS[e.code]] = false;
   if (e.code === 'KeyH') actions.horn(false);
 });
-window.addEventListener('blur', () => { for (const k in input) input[k] = false; sound.horn(false); });
+window.addEventListener('blur', () => { for (const k in input) input[k] = false; releaseTouch(); sound.horn(false); });
+initTouch(actions);
 window.addEventListener('gamepadconnected', (e) => { padIndex = e.gamepad.index; if (running) hud.toast('info', 'Controller connected', 'RT drive · LT brake · A hand brake · B horn · X radio · Y camera'); });
 
 // Xbox-layout gamepad. Returns the input for this frame (keyboard OR pad).
 const prevPad = [];
 function readInput() {
+  const k = TOUCH ? { up: input.up || touch.up, down: input.down || touch.down, left: input.left || touch.left, right: input.right || touch.right, brake: input.brake || touch.brake } : input;
   const gp = navigator.getGamepads?.()[padIndex];
-  if (!gp) return input;
+  if (!gp) return k;
   const btn = (i) => gp.buttons[i]?.value ?? 0;
   const edge = (i, fn) => { const on = btn(i) > 0.5; if (on && !prevPad[i]) fn(); prevPad[i] = on; };
   if (running) {
@@ -230,15 +234,15 @@ function readInput() {
   const ax = gp.axes[0] ?? 0;
   const steer = Math.abs(ax) > 0.12 ? -ax : 0;
   return {
-    up: input.up || btn(7) > 0.1, down: input.down || btn(6) > 0.1, brake: input.brake || btn(0) > 0.5,
-    left: input.left, right: input.right, steer: input.left || input.right ? undefined : steer || undefined,
+    up: k.up || btn(7) > 0.1, down: k.down || btn(6) > 0.1, brake: k.brake || btn(0) > 0.5,
+    left: k.left, right: k.right, steer: k.left || k.right ? undefined : steer || undefined,
   };
 }
 
 // ---------- Settings (HUD size, dialogue languages) ----------
 const hudEl = document.getElementById('hud');
 // mobile / weak GPUs start on Medium; everything else on High
-const defaultQuality = /Mobi|Android/i.test(navigator.userAgent) || renderer.capabilities.maxSamples < 4 ? 'medium' : 'high';
+const defaultQuality = TOUCH || /Mobi|Android/i.test(navigator.userAgent) || renderer.capabilities.maxSamples < 4 ? 'medium' : 'high';
 const settings = { scale: '1', lang: 'all', quality: defaultQuality, posters: 'real' };
 let today = 'normal';
 try { const saved = JSON.parse(localStorage.getItem('ottam-settings') || '{}'); if (!saved.v2) delete saved.posters; Object.assign(settings, saved, { v2: 1, posters: 'real' }); } catch { /* private mode */ }
@@ -249,10 +253,10 @@ function applySettings() {
   setHumanShadowDistance(settings.quality === 'low' ? 0 : settings.quality === 'medium' ? 14 : 25);
   vfx.motesOn = settings.quality !== 'low';
   for (const k of ['fictional', 'real']) for (const m of world.posterMeshes[k]) m.visible = settings.posters === k;
-  document.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (seg.dataset.set === 'day' ? today : settings[seg.dataset.set]))));
+  document.querySelectorAll('.seg[data-set]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (seg.dataset.set === 'day' ? today : settings[seg.dataset.set]))));
   try { localStorage.setItem('ottam-settings', JSON.stringify(settings)); } catch { /* ignore */ }
 }
-document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+document.querySelectorAll('.seg[data-set] button').forEach((b) => b.addEventListener('click', () => {
   if (b.parentElement.dataset.set === 'day') { setDay(b.dataset.v, true); applySettings(); return; }
   settings[b.parentElement.dataset.set] = b.dataset.v; applySettings();
 }));
@@ -272,11 +276,39 @@ function showHelp(on) {
 
 function setPaused(p, menu = true) {
   paused = p;
+  if (p) { releaseTouch(actions); syncPauseExtras(); }
   document.getElementById('pause').hidden = !(p && menu);
   if (sound.ctx) p ? sound.ctx.suspend() : sound.ctx.resume();
   sound.radio?.suspend(p);
 }
 let rainAmt = 0, wind = 0.35;
+
+// Phones have no Q / [ ] / R / T / M keys, so the pause menu carries the radio and town controls.
+function syncPauseExtras() {
+  if (!TOUCH) return;
+  const info = sound.radio?.info;
+  document.getElementById('p-station').textContent = info ? `${info.freq} · ${info.name}` : 'Off';
+  document.getElementById('p-vol').textContent = sound.radio ? Math.round((sound.radio.level / 0.9) * 10) : 5;
+  document.getElementById('p-rain').classList.toggle('on', raining);
+  document.getElementById('p-mute').textContent = muted ? 'Sound off' : 'Sound on';
+  document.getElementById('p-mute').classList.toggle('on', !muted);
+}
+document.querySelectorAll('[data-radio]').forEach((b) => b.addEventListener('click', () => {
+  const r = sound.radio; if (!r) return;
+  const v = b.dataset.radio;
+  if (v === 'next') r.next(); else if (v === 'prev') r.prev(); else if (v === 'off') r.tune(-1);
+  else r.setLevel(clamp(r.level + (v === 'up' ? 0.09 : -0.09), 0, 0.9));
+  syncPauseExtras();
+}));
+document.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', () => {
+  const v = b.dataset.more;
+  if (v === 'rain') setRain(!raining, true);
+  if (v === 'hour') { gameHour = (gameHour + 1) % 24; const c = formatClock(gameHour); b.textContent = `${c.text} ${c.ap}`; setTimeout(() => { b.textContent = '+1 hour'; }, 1200); }
+  if (v === 'mute') { muted = !muted; sound.setMuted(muted); }
+  syncPauseExtras();
+}));
+// tap the minimap to see more of the town
+if (TOUCH) document.querySelector('#hud .map').addEventListener('click', (e) => e.currentTarget.classList.toggle('big'));
 
 // ---------- Day events: the same streets on a different day ----------
 const DAY_LABEL = { normal: 'Ordinary day', monsoon: 'Monsoon day', hartal: 'Hartal', election: 'Election season', festival: 'Temple festival', christmas: 'Christmas eve' };
@@ -311,6 +343,7 @@ function setRain(on, quiet) {
 startBtn.disabled = false;
 startBtn.textContent = 'Start shift';
 startBtn.addEventListener('click', () => {
+  goFullscreen();
   document.getElementById('title').hidden = true;
   document.getElementById('hud').hidden = false;
   running = true;
@@ -321,8 +354,8 @@ startBtn.addEventListener('click', () => {
     if (st === 'Offline') hud.toast('warn', `${info.name} is off air`, 'Tuning to the next station…');
   };
   radio.tune(0);   // Akashvani Ananthapuri FM
-  radio.discover().then((n) => { if (n) hud.toast('info', 'Radio stations updated', `${n} trending Malayalam stations added — press Q`); });
-  hud.toast('info', `Auto rent ₹${missions.rent} paid`, `Today's goal: ₹${GOAL} net. Press / for controls`);
+  radio.discover().then((n) => { if (n) hud.toast('info', 'Radio stations updated', `${n} trending Malayalam stations added — ${TOUCH ? 'change stations from ⏸' : 'press Q'}`); });
+  hud.toast('info', `Auto rent ₹${missions.rent} paid`, `Today's goal: ₹${GOAL} net.${TOUCH ? '' : ' Press / for controls'}`);
   setDay(rollDay(), true); applySettings();
 });
 
