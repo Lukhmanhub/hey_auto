@@ -129,6 +129,12 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(180deg, #232421, #121311); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
   color: #8ff5cf; font-size: 14px;
 }
+.r-chip { position: relative; overflow: hidden; }
+.r-chip > * { position: relative; }
+/* hold Q: the chip fills up like a loader, then the radio switches off (or on) */
+.r-chip::before { content: ''; position: absolute; inset: 0; width: 0; background: rgba(143, 245, 207, 0.22); }
+.radio[data-hold="off"] .r-chip::before { background: rgba(255, 110, 90, 0.3); }
+.radio.holding .r-chip::before { width: 100%; transition: width 0.8s linear; }
 .r-chip .r-freq { font-family: var(--lcd); font-size: 16px; text-shadow: 0 0 8px rgba(143, 245, 207, 0.5); }
 .r-chip .r-short { color: rgba(201, 255, 233, 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .r-chip .r-open { opacity: 0.6; font-size: 11px; }
@@ -146,6 +152,7 @@ button { font: inherit; color: inherit; }
 .r-panel b { display: block; font-family: var(--ui); font-size: 15px; color: #c9ffe9; margin-top: 4px; }
 .r-panel span { display: block; font-family: var(--ui); font-size: 13px; color: rgba(201, 255, 233, 0.75); }
 .r-panel .keys { margin-top: 6px; font-family: var(--ui); font-size: 12px; color: rgba(201, 255, 233, 0.65); }
+.r-panel .keys em { font-style: normal; white-space: nowrap; }
 .r-panel kbd { font-size: 11px; padding: 1px 5px 0; min-width: 18px; }
 
 /* ---------- speedometer cluster ---------- */

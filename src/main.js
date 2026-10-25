@@ -292,8 +292,7 @@ window.addEventListener('keydown', (e) => {
   if (!running || e.repeat) return;
   if (e.code === 'KeyH') actions.horn(true);
   if (e.code === 'KeyC') actions.camera();
-  if (e.code === 'KeyQ') actions.radio(e.shiftKey);
-  if (e.code === 'KeyX') { sound.radio?.power(); hud.openRadio(); }
+  if (e.code === 'KeyQ') radioHold(e.shiftKey);
   if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
     const r = sound.radio; if (!r) return;
     r.setLevel(clamp(r.level + (e.code === 'BracketRight' ? 0.08 : -0.08), 0, 0.9));
@@ -314,8 +313,32 @@ window.addEventListener('keyup', (e) => {
   if (KEYS[e.code]) input[KEYS[e.code]] = false;
   if (e.code === 'KeyH') actions.horn(false);
   if (e.code === 'KeyV') mp.talk(false);
+  if (e.code === 'KeyQ') radioRelease(true);
 });
-window.addEventListener('blur', () => { for (const k in input) input[k] = false; releaseTouch(); sound.horn(false); if (mp.talkHeld) mp.talk(false); });
+// Q: tap for the next station; hold it while the chip fills up to switch the radio off (or back on)
+const RADIO_HOLD = 800;
+let qHold = null;
+function radioHold(back) {
+  if (qHold || !sound.radio) return;
+  const el = document.getElementById('radio');
+  el.dataset.hold = sound.radio.idx >= 0 ? 'off' : 'on';
+  el.classList.add('holding');
+  hud.openRadio();
+  qHold = { back, t: setTimeout(() => {
+    qHold.done = true;
+    el.classList.remove('holding');
+    sound.radio.power();
+    hud.openRadio();
+  }, RADIO_HOLD) };
+}
+function radioRelease(tap) {
+  if (!qHold) return;
+  clearTimeout(qHold.t);
+  document.getElementById('radio').classList.remove('holding');
+  if (tap && !qHold.done) actions.radio(qHold.back);
+  qHold = null;
+}
+window.addEventListener('blur', () => { radioRelease(false); for (const k in input) input[k] = false; releaseTouch(); sound.horn(false); if (mp.talkHeld) mp.talk(false); });
 initTouch(actions);
 window.addEventListener('gamepadconnected', (e) => { padIndex = e.gamepad.index; if (running) hud.toast('info', 'Controller connected', 'RT drive · LT brake · A hand brake · B horn · X radio · Y camera'); });
 

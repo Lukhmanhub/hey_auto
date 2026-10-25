@@ -418,12 +418,12 @@ export class Hud {
     const info = radio?.info;
     const playing = !!info && (!info.live || info.status === 'Live');
     $('r-freq').textContent = info ? info.freq : 'OFF';
-    $('r-short').textContent = info ? info.name : 'Radio · press Q';
+    $('r-short').textContent = info ? info.name : 'Radio · hold Q';
     $('radio').classList.toggle('on', playing);
     $('radio').classList.toggle('is-live', !!info?.live);
     const panel = info
-      ? `<div class="big">${info.live ? 'LIVE ' : 'FM '}${info.freq}</div><b>${esc(info.name)}</b><span>${esc(info.ml)}</span><span>${esc(info.live && info.status !== 'Live' ? info.status || 'Tuning…' : info.genre)}</span><div class="keys"><kbd>Q</kbd> next · <kbd>⇧</kbd><kbd>Q</kbd> back · <kbd>[</kbd><kbd>]</kbd> volume · <kbd>X</kbd> off</div>`
-      : `<div class="big">FM ----</div><b>Radio off</b><div class="keys"><kbd>X</kbd> back on · <kbd>Q</kbd> to tune in</div>`;
+      ? `<div class="big">${info.live ? 'LIVE ' : 'FM '}${info.freq}</div><b>${esc(info.name)}</b><span>${esc(info.ml)}</span><span>${esc(info.live && info.status !== 'Live' ? info.status || 'Tuning…' : info.genre)}</span><div class="keys"><kbd>Q</kbd> next · <kbd>[</kbd><kbd>]</kbd> volume · <em>hold <kbd>Q</kbd> off</em></div>`
+      : `<div class="big">FM ----</div><b>Radio off</b><div class="keys">hold <kbd>Q</kbd> to turn on</div>`;
     if (panel !== this.lastRadio) { $('r-panel').innerHTML = panel; this.lastRadio = panel; }
   }
 
