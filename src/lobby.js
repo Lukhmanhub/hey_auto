@@ -20,7 +20,8 @@ export function initLobby({ mp, track, onShift, startEnv }) {
   };
 
   const show = (on) => { lobby.hidden = !on; title.hidden = on; };
-  const room = (on) => { $('lb-choose').hidden = on; $('lb-room').hidden = !on; err.textContent = ''; if (on) checkVoice(); };
+  // in a stand, Back means leaving it, so say so
+  const room = (on) => { $('lb-choose').hidden = on; $('lb-room').hidden = !on; err.textContent = ''; $('lb-back').textContent = on ? '← Leave this stand' : '← Back'; if (on) checkVoice(); };
   const setBusy = (b, btn, label) => {
     busy = b;
     for (const id of ['lb-create', 'lb-join']) $(id).disabled = b;
@@ -32,6 +33,8 @@ export function initLobby({ mp, track, onShift, startEnv }) {
     if (mp.active) { mp.leave(); shown = new Set(); room(false); return; }
     show(false);
   });
+  // phones: ✕ just closes the card; a stand you're in stays open (Ride with friends brings it back)
+  $('lb-x').addEventListener('click', () => show(false));
   codeIn.addEventListener('input', () => { codeIn.value = cleanCode(codeIn.value); });
   codeIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('lb-join').click(); });
 

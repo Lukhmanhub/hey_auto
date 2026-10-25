@@ -385,6 +385,9 @@ document.querySelectorAll('.seg[data-set] button').forEach((b) => b.addEventList
   stats.track('set', { k: b.parentElement.dataset.set, v: b.dataset.v });
 }));
 document.getElementById('resume').addEventListener('click', () => setPaused(false));
+document.getElementById('pause-x').addEventListener('click', () => setPaused(false));
+// a tap on the dimmed road around the card is "back to driving" too
+document.getElementById('pause').addEventListener('click', (e) => { if (e.target.id === 'pause') setPaused(false); });
 document.getElementById('showhelp').addEventListener('click', () => showHelp(true));
 document.getElementById('help').addEventListener('click', () => showHelp(false));
 applySettings();
@@ -401,7 +404,7 @@ function showHelp(on) {
 function setPaused(p, menu = true) {
   paused = p;
   stats.setPlaying(!p);
-  if (p) { releaseTouch(actions); syncPauseExtras(); }
+  if (p) { releaseTouch(actions); syncPauseExtras(); syncPauseStand(); }
   document.getElementById('pause').hidden = !(p && menu);
   if (sound.ctx) p ? sound.ctx.suspend() : sound.ctx.resume();
   sound.radio?.suspend(p);
@@ -620,12 +623,46 @@ chatIn.addEventListener('blur', () => setTimeout(() => { if (document.activeElem
   talkBtn.addEventListener('pointerup', up); talkBtn.addEventListener('pointercancel', up); talkBtn.addEventListener('pointerleave', up);
   document.querySelector('[data-mp="chat"]').addEventListener('pointerdown', (e) => { e.preventDefault(); openChat(chatBox.hidden); });
 }
-document.getElementById('leave-stand').addEventListener('click', () => {
+// ---------- the stand in the pause menu: who's in, invite more, leave ----------
+// In a stand the day doesn't stop when you pause, so the menu says so, and leaving asks first.
+const psEl = document.getElementById('p-stand'), psConfirm = document.getElementById('ps-confirm');
+function syncPauseStand(keep) {
+  if (!keep) confirmLeave(false);
+  document.getElementById('pause-tag').textContent = mp.active ? 'Your friends keep driving. The stand’s clock doesn’t stop.' : 'Paused — the meter is waiting.';
+  if (!mp.active) return;
+  const n = mp.roster.length;
+  document.getElementById('ps-code').textContent = mp.code;
+  document.getElementById('ps-who').textContent = `${n} driver${n > 1 ? 's' : ''}${mp.host ? ' · you host' : mp.hostName ? ` · ${mp.hostName} hosts` : ''}`;
+}
+function confirmLeave(on) {
+  psConfirm.hidden = !on;
+  psEl.classList.toggle('confirming', on);
+  if (!on) return;
+  const others = mp.others.filter((m) => !m.away);
+  const rest = !others.length ? 'The stand closes when you go.'
+    : mp.host ? `${others[0].name} takes over as host for the others.` : `${others.map((m) => m.name).join(', ')} keep${others.length > 1 ? '' : 's'} driving.`;
+  document.getElementById('ps-confirm-t').textContent = ` You keep today’s earnings and drive solo. ${rest}`;
+}
+document.getElementById('ps-leave').addEventListener('click', () => confirmLeave(true));
+document.getElementById('ps-stay').addEventListener('click', () => confirmLeave(false));
+document.getElementById('ps-go').addEventListener('click', () => {
+  const code = mp.code;
   mp.leave();
   document.documentElement.classList.remove('mp');
-  hud.toast('info', 'You left the stand', 'Driving solo now');
+  chatBox.hidden = true;
+  nearEl.hidden = true;
+  document.getElementById('mic-help').hidden = true;
+  stats.track('mp', { k: 'leave' });
   setPaused(false);
+  hud.toast('info', `You left stand ${code}`, 'Driving solo now. Your earnings are safe.');
 });
+document.getElementById('ps-invite').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (navigator.share) { try { await navigator.share({ title: 'Hey Auto · ഹേ ഓട്ടോ', text: `Drive with me in Hey Auto! Join my auto stand: ${mp.code}`, url: mp.link }); return; } catch (err) { if (err.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(mp.link); btn.textContent = 'Link copied'; } catch { prompt('Copy this link', mp.link); }
+  setTimeout(() => { btn.textContent = 'Invite'; }, 1600);
+});
+mp.on('roster', () => { if (paused && mp.active) syncPauseStand(true); });
 mp.on('talk', () => drawStand());
 // friends' earnings, best first
 const standEl = document.getElementById('stand'), standList = document.getElementById('stand-list'), standHint = document.getElementById('stand-hint');

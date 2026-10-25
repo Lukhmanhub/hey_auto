@@ -95,7 +95,7 @@
         <span><kbd>Space</kbd></span><span>Hand brake</span>
         <span><kbd>H</kbd></span><span>Horn</span>
         <span><kbd>C</kbd></span><span>Camera: chase · high · driver seat</span>
-        <span><kbd>Q</kbd> <kbd>⇧</kbd><kbd>Q</kbd></span><span>Radio: next · previous station</span>
+        <span><kbd>Q</kbd> <kbd>⇧</kbd><kbd>Q</kbd></span><span>Radio: next · previous station · hold <kbd>Q</kbd> on/off</span>
         <span><kbd>[</kbd><kbd>]</kbd></span><span>Radio volume</span>
         <span><kbd>R</kbd></span><span>Monsoon rain</span>
         <span><kbd>T</kbd></span><span>Skip ahead one hour</span>
@@ -140,6 +140,7 @@
 
   <div id="lobby" class="overlay" hidden>
     <div class="card lobby-card">
+      <button class="x-close t-only" id="lb-x" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="logo"><span class="ml">ഓട്ടോ സ്റ്റാൻഡ്</span><span class="en">Auto stand</span></div>
       <p class="tag">Drive the same Kochi day with up to four friends. Same clock, same weather, your own fares. Pull up next to each other to chat and talk.</p>
       <div id="lb-choose">
@@ -179,8 +180,18 @@
 
   <div id="pause" class="overlay" hidden>
     <div class="card pause-card">
+      <button class="x-close t-only" id="pause-x" aria-label="Close and keep driving"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="logo"><span class="ml">ഹേ ഓട്ടോ</span><span class="en">Chaya break</span></div>
-      <p class="tag">Paused — the meter is waiting.</p>
+      <p class="tag" id="pause-tag">Paused — the meter is waiting.</p>
+      <div class="p-stand mp-only" id="p-stand">
+        <div class="ps-main"><small>Auto stand</small><b id="ps-code">·····</b><span id="ps-who"></span></div>
+        <div class="ps-btns"><button class="ghost" id="ps-invite">Invite</button><button class="ghost ps-leave" id="ps-leave">Leave stand</button></div>
+        <div class="ps-confirm" id="ps-confirm" hidden>
+          <p><b>Leave the stand?</b><span id="ps-confirm-t"></span></p>
+          <div><button class="ghost" id="ps-stay">Stay</button><button class="ps-go" id="ps-go">Leave</button></div>
+        </div>
+      </div>
+      <div class="p-body">
       <div class="settings">
         <div class="set"><span>HUD size</span><div class="seg" data-set="scale"><button data-v="0.85">S</button><button data-v="1">M</button><button data-v="1.15">L</button></div></div>
         <div class="set"><span>Graphics</span><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
@@ -190,7 +201,8 @@
         <div class="set t-only"><span>Town</span><div class="seg seg-act"><button data-more="rain" id="p-rain">Rain</button><button data-more="hour">+1 hour</button><button data-more="mute" id="p-mute">Sound on</button></div></div>
         <div class="set"><span>Dialogue</span><div class="seg" data-set="lang"><button data-v="ml">മലയാളം</button><button data-v="mlmg">+ Manglish</button><button data-v="all">+ English</button></div></div>
       </div>
-      <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button><button id="leave-stand" class="ghost mp-only">Leave stand</button></div>
+      </div>
+      <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button></div>
       <p class="follow">Enjoying the ride? Follow me on <a href="https://www.instagram.com/lukhman.designs/" target="_blank" rel="noopener">Instagram @lukhman.designs</a></p>
     </div>
   </div>
