@@ -195,10 +195,9 @@ export class Multiplayer {
     const was = this.active;
     this.active = false; this.started = false;
     for (const id of [...this.remotes.keys()]) this.removeRemote(id);
-    this.mic?.getTracks().forEach((t) => t.stop());
-    this.mic = null; this.talking = false; this.talkHeld = false;
-    try { this.proc?.disconnect(); this.micSrc?.disconnect(); } catch { /* gone */ }
-    this.proc = this.micSrc = null;
+    this.talking = false; this.talkHeld = false;
+    clearTimeout(this.micOffT);
+    this.closeMic();
     this.roster = [];
     this.setStatus('offline');
     if (was && !quiet) this.emit('roster', []);
@@ -326,7 +325,9 @@ export class Multiplayer {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       // iOS suspends audio when the app goes to the background; any tap brings it back
-      document.addEventListener('pointerdown', () => { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); });
+      const wake = () => { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); };
+      document.addEventListener('pointerdown', wake);
+      document.addEventListener('keydown', wake);
     }
     if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
     return this.ctx;
@@ -341,38 +342,70 @@ export class Multiplayer {
     o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.12);
   }
 
+  // Holding talk opens the mic and a capture context made *after* it (iOS records silence from a context
+  // that existed before the mic), and closes both a moment after release, so iPhones go back to playing
+  // game audio and voices on the loudspeaker instead of the quiet earpiece.
   async talk(on) {
     if (on === this.talkHeld) return;
     this.talkHeld = on;
     if (!this.active) return;
-    const ctx = this.audio();
+    this.audio();
+    clearTimeout(this.micOffT);
     if (on && !this.mic) {
-      try {
-        this.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-      } catch (e) {
-        this.talkHeld = false;
-        this.emit('mic', 'denied', e);
-        return;
-      }
-      this.micSrc = ctx.createMediaStreamSource(this.mic);
-      this.proc = ctx.createScriptProcessor(2048, 1, 1);
-      const mute = ctx.createGain(); mute.gain.value = 0;
-      this.micSrc.connect(this.proc).connect(mute).connect(ctx.destination);
-      this.buf = new Uint8Array(CHUNK); this.fill = 0; this.phase = 0; this.seq = 0;
-      this.proc.onaudioprocess = (e) => this.capture(e.inputBuffer.getChannelData(0), ctx.sampleRate);
-      this.emit('mic', 'ready');
+      if (!this.micOpening) this.micOpening = this.openMic();
+      const ok = await this.micOpening;
+      this.micOpening = null;
+      if (!ok) { this.talkHeld = false; return; }
     }
     const was = this.talking;
     this.talking = !!this.mic && this.talkHeld;
     if (this.talking !== was) {
       this.chirp(this.talking, 0.05);
-      if (!this.talking) this.flush(true);
+      if (this.talking) { this.peak = 0; this.talkT0 = performance.now(); this.silentWarned = false; }
+      else { this.flush(true); this.micOffT = setTimeout(() => this.closeMic(), 2500); }
     }
     this.emit('talk', this.talking);
   }
 
+  async openMic() {
+    try {
+      this.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+    } catch (e) {
+      this.emit('mic', 'denied', e);
+      return false;
+    }
+    const cap = new (window.AudioContext || window.webkitAudioContext)();
+    if (cap.state !== 'running') await cap.resume().catch(() => {});
+    this.cap = cap;
+    this.micSrc = cap.createMediaStreamSource(this.mic);
+    this.proc = cap.createScriptProcessor(2048, 1, 1);
+    const mute = cap.createGain(); mute.gain.value = 0;
+    this.micSrc.connect(this.proc).connect(mute).connect(cap.destination);
+    this.buf = new Uint8Array(CHUNK); this.fill = 0; this.phase = 0;
+    this.seq ??= 0;
+    this.proc.onaudioprocess = (e) => this.capture(e.inputBuffer.getChannelData(0), cap.sampleRate);
+    this.emit('mic', 'ready');
+    return true;
+  }
+
+  closeMic() {
+    if (this.talkHeld) return;
+    this.mic?.getTracks().forEach((t) => t.stop());
+    try { this.proc?.disconnect(); this.micSrc?.disconnect(); } catch { /* gone */ }
+    this.cap?.close().catch(() => {});
+    this.mic = this.proc = this.micSrc = this.cap = null;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not iOS */ }
+    if (this.ctx) this.audio();
+  }
+
   capture(input, sr) {
     if (!this.talking) return;
+    // is the mic actually hearing anything? (muted mic, wrong input, an OS that hands us silence)
+    let pk = 0;
+    for (let i = 0; i < input.length; i += 4) pk = Math.max(pk, Math.abs(input[i]));
+    this.peak = Math.max(this.peak * 0.9, pk);
+    this.level = pk;
+    if (!this.silentWarned && performance.now() - this.talkT0 > 2500 && this.peak < 0.003) { this.silentWarned = true; this.emit('mic', 'silent'); }
     const step = sr / RATE;
     // downsample by averaging each output sample's slice of input
     for (; this.phase < input.length; this.phase += step) {
@@ -384,14 +417,20 @@ export class Multiplayer {
     this.phase -= input.length;
   }
 
+  // the room relays to every other driver; each listener's game turns it down with distance, so a
+  // late or missing position update on one side can't silence the other
   flush(end) {
-    const to = this.nearby(HEAR * 1.15).map((r) => r.id);
+    const to = this.others.filter((m) => !m.away).map((m) => m.id);
     if (to.length && (this.fill || end)) this.send({ t: 'v', to, d: toB64(this.buf.subarray(0, this.fill)), n: this.seq++, e: end ? 1 : 0 });
     this.fill = 0;
   }
 
   hear(m) {
     const ctx = this.audio();
+    if (ctx.state !== 'running' && !this.blockedWarned) {
+      // the browser is holding the sound back until the next tap or key press
+      setTimeout(() => { if (ctx.state !== 'running') { this.blockedWarned = true; this.emit('mic', 'blocked', this.member(m.from)); } }, 400);
+    }
     let vo = this.voices.get(m.from);
     if (!vo) {
       const gain = ctx.createGain(); gain.gain.value = 0;

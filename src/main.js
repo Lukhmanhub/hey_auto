@@ -537,8 +537,10 @@ mp.on('status', (st) => {
   if (st === 'reconnecting') hud.toast('warn', 'Signal lost', 'Reconnecting to the stand…');
   if (st === 'online' && mp.started) hud.toast('info', 'Back on the stand');
 });
-mp.on('mic', (st) => {
+mp.on('mic', (st, who) => {
   if (st === 'denied') hud.toast('warn', 'Microphone blocked', 'Allow the mic for this site to talk to other drivers');
+  if (st === 'silent') hud.toast('warn', 'Your mic is silent', 'Check it isn’t muted, or pick the right microphone in your browser');
+  if (st === 'blocked') hud.toast('info', `${who?.name ?? 'A friend'} is talking`, TOUCH ? 'Tap the screen to hear them' : 'Click or press any key to hear them');
 });
 mp.on('chat', (m, text, dist) => {
   if (!running || !m || dist > HEAR * 1.4) return;   // only the drivers around you hear it
