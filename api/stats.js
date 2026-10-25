@@ -1,14 +1,18 @@
 // Read side for the analytics dashboard (analytics.html). If ANALYTICS_KEY is set on Vercel, the
 // dashboard must send it (it asks once and remembers it); without it the numbers are open to anyone.
-import { pipeline, dayKey, json, configured } from './_store.js';
+import { pipeline, dayKey, json, isConfigured, env } from './_store.js';
+
+// the dashboard page is served from lukhmandesigns.com, the function from the game's own host
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'x-key' };
+export function OPTIONS() { return new Response(null, { status: 204, headers: CORS }); }
 
 const toObj = (arr) => { const o = {}; for (let i = 0; i < (arr?.length ?? 0); i += 2) o[arr[i]] = +arr[i + 1] || 0; return o; };
 const merge = (into, h) => { for (const k in h) into[k] = (into[k] || 0) + h[k]; return into; };
 
 export async function GET(request) {
   const url = new URL(request.url);
-  const KEY = process.env.ANALYTICS_KEY;
-  if (KEY && (request.headers.get('x-key') || url.searchParams.get('key')) !== KEY) return json({ error: 'locked' }, 401);
+  const KEY = env('ANALYTICS_KEY');
+  if (KEY && (request.headers.get('x-key') || url.searchParams.get('key')) !== KEY) return json({ error: 'locked' }, 401, CORS);
 
   const range = url.searchParams.get('range') || '7';
   const now = Date.now();
@@ -45,15 +49,15 @@ export async function GET(request) {
     }
 
     return json({
-      configured, range, generated: now,
+      configured: isConfigured(), range, generated: now,
       live: res[base + 3] || 0,
       visitors: res[base] || 0,
       players: res[base + 1] || 0,
       totals,
       series: series.map(({ h, ...s }) => s),
       sessions,
-    });
+    }, 200, CORS);
   } catch (err) {
-    return json({ error: String(err.message) }, 500);
+    return json({ error: String(err.message) }, 500, CORS);
   }
 }

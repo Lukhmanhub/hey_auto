@@ -36,6 +36,7 @@ export class Posters {
     }
     for (let i = 0; i < this.count; i++) {
       const img = new Image();
+      img.crossOrigin = 'anonymous';   // the files come from the game's own host, the page from the portfolio
       img.onload = () => {
         for (const worn of [false, true]) {
           const [cx, cy] = this.cell(i, worn);

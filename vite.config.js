@@ -27,10 +27,11 @@ const devApi = {
   },
 };
 
-// The game lives at lukhmandesigns.com/heyauto (proxied from the hey-auto Vercel project);
-// the analytics dashboard is a second page at /heyauto/analytics.
+// The game lives at lukhmandesigns.com/heyauto; the analytics dashboard is a second page at /heyauto/analytics.
+// The portfolio only proxies the page itself: `npm run build:cf` points every script, texture and sound
+// straight at Cloudflare Pages (HEYAUTO_BASE), so they never count against the portfolio's Vercel limits.
 export default defineConfig({
-  base: '/heyauto/',
+  base: process.env.HEYAUTO_BASE || '/heyauto/',
   plugins: [devApi],
   build: {
     target: 'es2022', chunkSizeWarningLimit: 1200,

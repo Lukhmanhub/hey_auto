@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Ottam — an open-world auto-rickshaw driving game set in Kerala",
+  "description": "Ottam \u2014 an open-world auto-rickshaw driving game set in Kerala",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:cf": "HEYAUTO_BASE=${HEYAUTO_BASE:-https://hey-auto.pages.dev/heyauto/} vite build && node scripts/cf-pack.mjs",
+    "deploy:cf": "npm run build:cf && npx -y wrangler@4 pages deploy cf --project-name hey-auto --branch main"
   },
   "dependencies": {
     "dseg": "^0.46.0",

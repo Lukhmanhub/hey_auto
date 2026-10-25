@@ -23,9 +23,10 @@ export async function POST(request) {
   if (vid === 'unknown' || sid === 'unknown' || !events.length) return json({ ok: false }, 400, CORS);
 
   const now = Date.now(), D = dayKey(now);
-  const geo = str(request.headers.get('x-vercel-ip-country'), 4);
+  // country/city from the host's edge: Cloudflare (request.cf, cf-ipcountry) or Vercel (x-vercel-ip-*)
+  const geo = str(request.cf?.country || request.headers.get('cf-ipcountry') || request.headers.get('x-vercel-ip-country'), 4);
   let city = 'unknown';
-  try { city = str(decodeURIComponent(request.headers.get('x-vercel-ip-city') || ''), 32); } catch { /* bad encoding */ }
+  try { city = str(request.cf?.city || decodeURIComponent(request.headers.get('x-vercel-ip-city') || ''), 32); } catch { /* bad encoding */ }
 
   const cmds = [];
   const inc = (field, by = 1) => { if (!by) return; for (const h of [`h:${D}`, 'h:all']) cmds.push(['HINCRBY', h, field, Math.round(by)]); };

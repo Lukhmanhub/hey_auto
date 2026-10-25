@@ -8,8 +8,10 @@ const params = new URLSearchParams(location.search);
 // address, local dev or automated browsers. Add ?track=1 to force it for testing.
 const portfolio = /(^|\.)lukhmandesigns\.com$/.test(location.hostname);
 const OFF = params.has('notrack') || (!params.has('track') && (!portfolio || navigator.webdriver));
-// straight to the game's own Vercel project, so its edge sees the player's country (not the portfolio proxy's)
-const ENDPOINT = local ? `${import.meta.env.BASE_URL}api/t` : 'https://hey-auto.vercel.app/api/t';
+// straight to the game's own host (Cloudflare Pages when built with an absolute base), so its edge sees
+// the player's country, not the portfolio proxy's
+const BASE = import.meta.env.BASE_URL;
+const ENDPOINT = local || BASE.startsWith('http') ? `${BASE}api/t` : 'https://hey-auto.vercel.app/api/t';
 
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 let visitor = null, returning = false;

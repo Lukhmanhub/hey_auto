@@ -12,7 +12,7 @@ function tex(name, { srgb = true, repeat = 1 } = {}) {
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-function loadImage(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+function loadImage(src) { return new Promise((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
 
 // Box projection: pick the dominant normal axis per vertex and use world coords as UVs.
 export function projectUV(g, scale) {

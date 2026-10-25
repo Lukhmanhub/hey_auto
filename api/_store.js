@@ -1,17 +1,21 @@
-// Tiny Redis layer for the analytics functions. On Vercel it talks to Upstash Redis over REST (add
-// "Upstash for Redis" from the Vercel Marketplace and it sets KV_REST_API_URL / KV_REST_API_TOKEN).
-// Without those env vars (local `npm run dev`) it falls back to an in-memory store.
-const URL_ = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-export const configured = !!(URL_ && TOKEN);
+// Tiny Redis layer for the analytics functions. It talks to Upstash Redis over REST: set
+// KV_REST_API_URL / KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_URL / _TOKEN) on the host, Cloudflare Pages
+// (Settings → Variables and secrets) or Vercel. Without them (local `npm run dev`) it uses an in-memory store.
+// Cloudflare hands variables to each request instead of process.env, so functions/ passes them in with setEnv.
+let extra = {};
+export const setEnv = (e) => { extra = e || {}; };
+export const env = (k) => extra[k] ?? globalThis.process?.env?.[k];
+const creds = () => ({ url: env('KV_REST_API_URL') || env('UPSTASH_REDIS_REST_URL'), token: env('KV_REST_API_TOKEN') || env('UPSTASH_REDIS_REST_TOKEN') });
+export const isConfigured = () => { const c = creds(); return !!(c.url && c.token); };
 
 // Run several commands in one round trip; returns each command's result.
 export async function pipeline(cmds) {
   if (!cmds.length) return [];
-  if (!configured) return cmds.map((c) => mem(c));
-  const r = await fetch(`${URL_}/pipeline`, {
+  const { url, token } = creds();
+  if (!url || !token) return cmds.map((c) => mem(c));
+  const r = await fetch(`${url}/pipeline`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmds),
   });
   if (!r.ok) throw new Error(`redis ${r.status}`);
