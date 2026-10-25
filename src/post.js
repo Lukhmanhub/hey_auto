@@ -34,6 +34,7 @@ export function keralaGrade({ warmth = 1, lift = 0.95, greens = 1.1, size = 32 }
 export class Post {
   // Phones can be put on a safer graphics level (main.js does it when a phone shows a blank screen):
   //   level 0 = full chain · 1 = no multisampling, no AO, small shadows · 2 = no post chain at all
+  //   3 = level 2 with fewer pixels and a smaller shadow map, for phones that keep running out of GPU memory
   constructor(renderer, scene, camera, { mobile = false, level = 0 } = {}) {
     this.renderer = renderer; this.scene = scene; this.camera = camera;
     this.mobile = mobile; this.level = level; this.quality = 'high';
@@ -70,9 +71,9 @@ export class Post {
     this.composer.multisampling = safe ? 0 : q === 'high' ? Math.min(4, this.renderer.capabilities.maxSamples) : q === 'medium' ? 2 : 0;
     this.bloom.blendMode.opacity.value = q === 'low' ? 0 : 1;
     this.grain.blendMode.opacity.value = q === 'low' ? 0 : 0.12;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' ? 1 : this.maxDpr ?? 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' || this.level >= 3 ? 1 : this.maxDpr ?? 1.5));
     this.composer.setSize(window.innerWidth, window.innerHeight);
-    if (sun) { const s = q === 'low' || (this.mobile && (q !== 'high' || safe)) ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
+    if (sun) { const s = this.level >= 3 ? 512 : q === 'low' || (this.mobile && (q !== 'high' || safe)) ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
   }
   setLevel(level) { this.level = level; this.setQuality(this.quality, this.sun); }
   render(dt) {

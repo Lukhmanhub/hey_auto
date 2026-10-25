@@ -40,7 +40,9 @@ if (TOUCH) {
   let saved = null;
   try { saved = localStorage.getItem('heyauto-gfx'); } catch { /* private mode */ }
   const forced = new URLSearchParams(location.search).get('gfx');
-  gfx.level = forced !== null ? clamp(+forced || 0, 0, 2) : saved !== null ? clamp(+saved || 0, 0, 2) : /Xclipse|Samsung|Mali-G(5|7)\d|PowerVR/i.test(gfx.gpu) ? 1 : 0;
+  gfx.level = forced !== null ? clamp(+forced || 0, 0, 3) : saved !== null ? clamp(+saved || 0, 0, 3) : /Xclipse|Samsung|Mali-G(5|7)\d|PowerVR/i.test(gfx.gpu) ? 1 : 0;
+  // the effect chain draws into half-float buffers; a GPU that can't render to them only ever shows garbage
+  try { const gl = renderer.getContext(); if (forced === null && gfx.level < 2 && !gl.getExtension('EXT_color_buffer_half_float') && !gl.getExtension('EXT_color_buffer_float')) gfx.level = 2; } catch { /* keep level */ }
   renderer.debug.onShaderError = (gl, program, vs, fs) => {
     const log = (gl.getShaderInfoLog(fs) || gl.getShaderInfoLog(vs) || gl.getProgramInfoLog(program) || '').split('\n')[0];
     console.error('Shader error', log);
@@ -62,7 +64,7 @@ if (TOUCH) {
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     lost = true;
-    if (!document.hidden) saveGfx(Math.min(2, gfx.level + 1), 'context lost');
+    if (!document.hidden) saveGfx(Math.min(3, gfx.level + 1), 'context lost');
     else stats.track('err', { m: `gfx context lost in background · ${gfx.gpu}`.slice(0, 80) });
     setTimeout(reload, 1500);
   });
@@ -70,23 +72,24 @@ if (TOUCH) {
   document.addEventListener('visibilitychange', reload);
   window.addEventListener('pageshow', reload);
 }
-// A healthy frame has sky, road, walls and the auto in it; a broken one is a single flat colour.
-const _px = new Uint8Array(4);
-function frameIsBlank() {
+// A healthy frame has sky, road, walls and the auto in it; a broken one is (nearly) a single flat colour,
+// sometimes with faint streaks or film grain on top. Sample a grid of small averaged patches and call the
+// frame broken when almost all of them match the middle colour.
+const _px = new Uint8Array(4 * 9);
+function frameFlatness() {
   const gl = renderer.getContext();
   renderer.setRenderTarget(null);
-  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
-  let lo = 255, hi = 0, range = 0;
-  for (let c = 0; c < 3; c++) {
-    lo = 255; hi = 0;
-    for (let i = 1; i <= 5; i++) for (let j = 1; j <= 4; j++) {
-      gl.readPixels(Math.floor((w * i) / 6), Math.floor((h * j) / 5), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, _px);
-      lo = Math.min(lo, _px[c]); hi = Math.max(hi, _px[c]);
-    }
-    range = Math.max(range, hi - lo);
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, pts = [];
+  for (let i = 1; i <= 8; i++) for (let j = 1; j <= 6; j++) {
+    gl.readPixels(Math.floor((w * i) / 9) - 1, Math.floor((h * j) / 7) - 1, 3, 3, gl.RGBA, gl.UNSIGNED_BYTE, _px);
+    const p = [0, 0, 0];
+    for (let k = 0; k < 9; k++) for (let c = 0; c < 3; c++) p[c] += _px[k * 4 + c] / 9;
+    pts.push(p);
   }
-  return range < 10;
+  const mid = [0, 1, 2].map((c) => pts.map((p) => p[c]).sort((a, b) => a - b)[pts.length >> 1]);
+  return pts.filter((p) => Math.abs(p[0] - mid[0]) < 16 && Math.abs(p[1] - mid[1]) < 16 && Math.abs(p[2] - mid[2]) < 16).length / pts.length;
 }
+const frameIsBlank = () => frameFlatness() > 0.85;
 // called after each rendered frame: checks a handful of frames after start-up (and after each step down)
 function checkGfx() {
   if (!TOUCH || gfx.checks >= 12 || document.hidden) return;
@@ -94,7 +97,7 @@ function checkGfx() {
   gfx.checks++;
   if (frameIsBlank()) gfx.blanks++;
   if (gfx.blanks >= 2) {
-    if (gfx.level >= 2) { gfx.checks = 99; stats.track('err', { m: `gfx still blank on safe mode · ${gfx.gpu}`.slice(0, 80) }); return; }
+    if (gfx.level >= 3) { gfx.checks = 99; stats.track('err', { m: `gfx still blank on safe mode · ${gfx.gpu}`.slice(0, 80) }); return; }
     saveGfx(gfx.level + 1, 'blank screen');
     post.setLevel(gfx.level);
   }
@@ -840,3 +843,4 @@ if (new URLSearchParams(location.search).has('dev')) {
 window.__ottam = { vfx, skies, post, player, traffic, peds, missions, world, rules, sound, hud, setRain, input, scene, camera };
 window.__ottam.setHour = (h) => { gameHour = h; };
 window.__ottam.weather = weather;
+window.__ottam.gfx = gfx; window.__ottam.frameFlatness = frameFlatness;
