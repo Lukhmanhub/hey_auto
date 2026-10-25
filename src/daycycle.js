@@ -3,18 +3,17 @@ import * as THREE from 'three';
 // GTA-style clock: one real second is one game minute, so a full day takes 24 real minutes.
 export const MINUTES_PER_SECOND = 1;
 
-// Sky and light keyframes through a humid Kochi day: pale grey-white overcast, a weak sun, green bounce light. Interpolated smoothly (and wrapped at midnight).
+// Sky and light keyframes through a clear Kerala day. Interpolated smoothly (and wrapped at midnight).
 const K = [
   { h: 0, top: '#070d1c', horizon: '#141c2e', sunCol: '#9fb4ff', sun: 0.32, hemiSky: '#33456e', hemiGround: '#0b0d12', hemi: 0.32, exposure: 1.35, env: 0.07, fogFar: 300, night: 1 },
   { h: 4.9, top: '#0b1428', horizon: '#1d2740', sunCol: '#9fb4ff', sun: 0.3, hemiSky: '#33456e', hemiGround: '#0b0d12', hemi: 0.32, exposure: 1.35, env: 0.07, fogFar: 300, night: 1 },
   { h: 5.8, top: '#26385c', horizon: '#c98b6a', sunCol: '#ff9a5a', sun: 0.45, hemiSky: '#8a8fb0', hemiGround: '#2a2a22', hemi: 0.35, exposure: 1.2, env: 0.25, fogFar: 380, night: 0.5 },
-  { h: 6.6, top: '#8a9cae', horizon: '#dccbb6', sunCol: '#ffc690', sun: 0.95, hemiSky: '#c6cccf', hemiGround: '#4e6a3a', hemi: 0.8, exposure: 1.05, env: 0.6, fogFar: 430, night: 0 },
-  // daytime is mostly humidity: a bright grey-white sky (#B8C2C6 above → #D9DEDF at the horizon), soft light from everywhere
-  { h: 8, top: '#b8c2c6', horizon: '#d9dedf', sunCol: '#fff1dc', sun: 1.3, hemiSky: '#d4dadc', hemiGround: '#557a40', hemi: 1.1, exposure: 1.0, env: 0.85, fogFar: 500, night: 0 },
-  { h: 13, top: '#b6c0c5', horizon: '#dbe0e0', sunCol: '#fff6e8', sun: 1.5, hemiSky: '#d8dee0', hemiGround: '#5a7f44', hemi: 1.2, exposure: 0.98, env: 0.9, fogFar: 500, night: 0 },
-  { h: 16.3, top: '#b2bcc0', horizon: '#dcdcd6', sunCol: '#ffecce', sun: 1.35, hemiSky: '#d6d9d5', hemiGround: '#5a7a42', hemi: 1.1, exposure: 1.0, env: 0.85, fogFar: 490, night: 0 },
-  // late afternoon: the haze warms a little before sunset
-  { h: 17.4, top: '#909fb0', horizon: '#e4cfb2', sunCol: '#ffc888', sun: 1.15, hemiSky: '#d8ceba', hemiGround: '#566a3a', hemi: 0.9, exposure: 1.02, env: 0.65, fogFar: 470, night: 0 },
+  { h: 6.6, top: '#5a82b0', horizon: '#f2b07a', sunCol: '#ffa860', sun: 1.4, hemiSky: '#c9cfe0', hemiGround: '#5a5a3a', hemi: 0.42, exposure: 1.05, env: 0.55, fogFar: 460, night: 0 },
+  { h: 8, top: '#78a0c4', horizon: '#e2cba6', sunCol: '#ffdcae', sun: 2.3, hemiSky: '#dcecff', hemiGround: '#6b7a45', hemi: 0.5, exposure: 1.0, env: 0.7, fogFar: 500, night: 0 },
+  { h: 13, top: '#7fa6c6', horizon: '#d9c8a8', sunCol: '#fff0d6', sun: 2.9, hemiSky: '#dcecff', hemiGround: '#6b7a45', hemi: 0.5, exposure: 1.0, env: 0.75, fogFar: 520, night: 0 },
+  { h: 16.3, top: '#7b9fc0', horizon: '#e4c896', sunCol: '#ffe0a8', sun: 2.6, hemiSky: '#e8e4d6', hemiGround: '#6b6a40', hemi: 0.5, exposure: 1.0, env: 0.7, fogFar: 500, night: 0 },
+  // golden hour: low warm light, long shadows, a honey-coloured haze
+  { h: 17.4, top: '#6f92b8', horizon: '#f2c27e', sunCol: '#ffbe6a', sun: 2.2, hemiSky: '#f0d8b0', hemiGround: '#6a5a38', hemi: 0.48, exposure: 1.02, env: 0.6, fogFar: 480, night: 0 },
   // sunset: the disc sits on the horizon, sky burns orange-pink on that side, blue-violet overhead
   { h: 18.25, top: '#4a6596', horizon: '#ff9a5c', sunCol: '#ff7a3a', sun: 1.25, hemiSky: '#e0a890', hemiGround: '#4a3226', hemi: 0.42, exposure: 1.08, env: 0.42, fogFar: 440, night: 0.05 },
   { h: 18.75, top: '#2c3c6a', horizon: '#e0705a', sunCol: '#ff5a3a', sun: 0.55, hemiSky: '#a88aa0', hemiGround: '#2a2020', hemi: 0.38, exposure: 1.15, env: 0.25, fogFar: 400, night: 0.3 },

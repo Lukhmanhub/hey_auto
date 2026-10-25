@@ -26,7 +26,7 @@ stats.initAnalytics({ renderer, getStats: () => { try { return { rides: missions
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;   // PCF honours shadow.radius: wide, soft overcast shadows
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 // ---------- Phone graphics safety net ----------
 // Some phone GPUs (Samsung's Exynos/Xclipse, older Mali) choke on the full effect chain and show a blank
@@ -143,9 +143,7 @@ const sky = new THREE.Mesh(
 );
 sky.frustumCulled = false;
 scene.add(sky);
-// Kochi haze: exponential fog, cool and faintly green-grey, so palms a couple of blocks away fade out
-const HAZE = new THREE.Color(0xc9d1d0);
-scene.fog = new THREE.FogExp2(HAZE.clone(), 0.012);
+scene.fog = new THREE.Fog(CLEAR.horizon.clone(), CLEAR.fogNear, CLEAR.fogFar);
 
 const hemi = new THREE.HemisphereLight('#dcecff', '#6b7a45', CLEAR.hemi);
 scene.add(hemi);
@@ -155,7 +153,6 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 260 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.6;
-sun.shadow.radius = 3.5;
 scene.add(sun, sun.target);
 
 // soft cumulus: piled-up puffs with bright tops and flat, greyer undersides
@@ -697,7 +694,7 @@ function updateCamera(dt) {
 let gameHour = 7.5;                 // shift starts 7:30 am
 const weather = new Weather();
 let lastHourInt = Math.floor(gameHour), nightAmt = 0;
-const _haze = new THREE.Color(), _grey = new THREE.Color(), _cc = new THREE.Color(), _warm = new THREE.Color(), _cool = new THREE.Color(), _cd = new THREE.Vector3();
+const _grey = new THREE.Color(), _cc = new THREE.Color(), _warm = new THREE.Color(), _cool = new THREE.Color(), _cd = new THREE.Vector3();
 
 function updateEnv(dt) {
   // the clock only runs while you're driving
@@ -719,13 +716,11 @@ function updateEnv(dt) {
   const overcast = clamp(Math.max(rainAmt, weather.cloud * 0.55), 0, 1);
   const grey = (src, out, dark) => { const l = src.r * 0.3 + src.g * 0.59 + src.b * 0.11; _grey.setRGB(l * dark, l * dark * 1.03, l * dark * 1.05); out.copy(src).lerp(_grey, overcast); };
   grey(k.top, skyU.top.value, 0.75); grey(k.horizon, skyU.horizon.value, 0.85);
-  // by day the horizon and the fog share the cool green-grey haze, so distant palms melt into the sky
-  const lowSun = skyU.sunLow.value;
-  skyU.horizon.value.lerp(_haze.copy(HAZE).multiplyScalar(lerp(1, 0.6, overcast)), (1 - nightAmt) * (1 - lowSun * 0.7) * 0.55);
   scene.fog.color.copy(skyU.horizon.value);
   world.setSkyline(skyU.horizon.value);
-  scene.fog.density = lerp(6 / k.fogFar, 0.019, rainAmt);
-  skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt) * 0.5;   // the sun is a bright smudge behind the haze
+  scene.fog.near = lerp(CLEAR.fogNear, RAIN.fogNear, rainAmt);
+  scene.fog.far = lerp(k.fogFar, RAIN.fogFar, rainAmt);
+  skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt);
   skyU.uNight.value = nightAmt * (1 - overcast);
   skyU.sunDir.value.copy(sunDirAt(gameHour));
   skyU.sunCol.value.copy(k.sunCol);

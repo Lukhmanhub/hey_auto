@@ -7,25 +7,22 @@ import {
 import { N8AOPostPass } from 'n8ao';
 
 // The "Kerala look": warm, humid, a little hazy. Built procedurally as a 3D LUT so it can be tuned live.
-export function keralaGrade({ warmth = 0.55, lift = 1.35, greens = 1.8, size = 32 } = {}) {
+export function keralaGrade({ warmth = 1, lift = 0.95, greens = 1.1, size = 32 } = {}) {
   const lut = LookupTexture.createNeutral(size);
   const d = lut.image.data;
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i], g = d[i + 1], b = d[i + 2];
     const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    // humid haze: lift the blacks slightly toward a soft green-grey
+    // humid haze: lift the blacks slightly toward a warm grey
     const lf = 0.035 * lift * (1 - l);
-    r += lf * 0.94; g += lf * 1.0; b += lf * 0.97;
+    r += lf * 1.05; g += lf * 0.98; b += lf * 0.85;
     // golden highlights, faintly teal shadows
     const hi = Math.max(0, l - 0.45) * 0.12 * warmth, lo = Math.max(0, 0.4 - l) * 0.06 * warmth;
     r += hi; g += hi * 0.55; b -= hi * 0.35;
     r -= lo * 0.4; g += lo * 0.1; b += lo * 0.35;
     // lush greens: push yellow-greens a touch deeper and richer
     const greenness = Math.max(0, g - Math.max(r, b));
-    g += greenness * 0.12 * greens; r -= greenness * 0.08 * greens; b -= greenness * 0.04 * greens;
-    // monsoon foliage reads deep and saturated: darken mid greens a touch so they don't go lime
-    const leafy = Math.min(1, greenness * 6);
-    r *= 1 - leafy * 0.04 * greens; g *= 1 - leafy * 0.02 * greens; b *= 1 - leafy * 0.05 * greens;
+    g += greenness * 0.12 * greens; r -= greenness * 0.06 * greens;
     // gentle filmic S-curve
     const s = (x) => x + 0.06 * Math.sin((x - 0.5) * Math.PI) * 0.5;
     d[i] = Math.min(1, Math.max(0, s(r))); d[i + 1] = Math.min(1, Math.max(0, s(g))); d[i + 2] = Math.min(1, Math.max(0, s(b)));
