@@ -16,7 +16,7 @@ import { Sound } from './audio.js';
 import { Hud } from './hud.js';
 import { TOUCH, touch, initTouch, releaseTouch, goFullscreen } from './touch.js';
 import * as stats from './analytics.js';
-import { Multiplayer, HEAR } from './multiplayer.js';
+import { Multiplayer, HEAR, micHelp } from './multiplayer.js';
 import { initLobby } from './lobby.js';
 import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
@@ -538,9 +538,22 @@ mp.on('status', (st) => {
   if (st === 'online' && mp.started) hud.toast('info', 'Back on the stand');
 });
 mp.on('mic', (st, who) => {
-  if (st === 'denied') hud.toast('warn', 'Microphone blocked', 'Allow the mic for this site to talk to other drivers');
+  if (st === 'denied') showMicHelp(who);
   if (st === 'silent') hud.toast('warn', 'Your mic is silent', 'Check it isn’t muted, or pick the right microphone in your browser');
   if (st === 'blocked') hud.toast('info', `${who?.name ?? 'A friend'} is talking`, TOUCH ? 'Tap the screen to hear them' : 'Click or press any key to hear them');
+});
+// the mic was refused: say how to turn it back on for this phone and browser, with a retry from a real tap
+const micHelpEl = document.getElementById('mic-help');
+function showMicHelp(reason) {
+  document.getElementById('mic-help-t').textContent = micHelp(reason);
+  micHelpEl.hidden = false;
+  stats.track('mp', { k: `mic-${reason}` });
+}
+document.getElementById('mic-x').addEventListener('click', () => { micHelpEl.hidden = true; });
+document.getElementById('mic-try').addEventListener('click', async () => {
+  const r = await mp.askMic();
+  if (r.ok) { micHelpEl.hidden = true; hud.toast('info', 'Microphone on', TOUCH ? 'Hold TALK to speak' : 'Hold V to speak'); }
+  else document.getElementById('mic-help-t').textContent = micHelp(r.reason);
 });
 mp.on('chat', (m, text, dist) => {
   if (!running || !m || dist > HEAR * 1.4) return;   // only the drivers around you hear it

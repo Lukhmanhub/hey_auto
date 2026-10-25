@@ -25,6 +25,38 @@ const ERRORS = {
   bad: 'Something went wrong. Try again.',
 };
 
+// ---------- microphone permission ----------
+// Phones only show the "Allow microphone?" question when the browser has not already decided. Once a
+// driver taps Block (or an app's built-in browser has no mic at all) getUserMedia fails silently, so we
+// ask up front in the lobby from a real tap, and when it fails say exactly how to turn it back on.
+const UA = navigator.userAgent;
+const IOS = /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+const INAPP = /Instagram|FBAN|FBAV|LinkedInApp|Line\/|Snapchat|Twitter|MicroMessenger|GSA\/|; wv\)/.test(UA);
+export function micReason(e) {
+  const n = e?.name || '';
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) return INAPP || IOS ? 'inapp' : 'unsupported';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'nomic';
+  if (n === 'NotReadableError' || n === 'AbortError') return 'busy';
+  return INAPP ? 'inapp' : 'denied';
+}
+// what to tell the driver for each failure, in the words of their own phone and browser
+export function micHelp(reason) {
+  if (reason === 'nomic') return 'No microphone found on this device.';
+  if (reason === 'busy') return 'Another app is using the microphone (a call, or a voice note). Close it and try again.';
+  if (reason === 'inapp' || reason === 'unsupported') return `This app’s built-in browser can’t use the microphone. Open the link in ${IOS ? 'Safari' : 'Chrome'} to talk (⋯ menu → Open in browser).`;
+  if (IOS && /CriOS/.test(UA)) return 'Open the iPhone Settings app → Chrome → turn on Microphone, then come back and tap Try again.';
+  if (IOS && /FxiOS|EdgiOS|OPiOS/.test(UA)) return 'Open the iPhone Settings app → your browser → turn on Microphone, then tap Try again.';
+  if (IOS) return 'Tap “aA” in Safari’s address bar → Website Settings → Microphone → Allow, then tap Try again. (Or Settings app → Apps → Safari → Microphone → Ask.)';
+  if (/SamsungBrowser/.test(UA)) return 'Tap the lock icon by the address → Permissions → Microphone → Allow, then tap Try again. Still blocked? Android Settings → Apps → Samsung Internet → Permissions → Microphone.';
+  if (/Android/.test(UA)) return 'Tap the icon left of the address → Permissions → Microphone → Allow, then tap Try again. Still blocked? Android Settings → Apps → Chrome → Permissions → Microphone → Allow.';
+  return 'Click the icon left of the address bar → Microphone → Allow, then try again.';
+}
+// 'granted' | 'denied' | 'prompt' | 'unknown' — without asking (Safari before 16 can't tell us)
+export async function micPermission() {
+  if (!navigator.mediaDevices?.getUserMedia) return 'denied';
+  try { return (await navigator.permissions.query({ name: 'microphone' })).state; } catch { return 'unknown'; }
+}
+
 // ---------- walkie-talkie audio: 12 kHz, 8-bit μ-law (telephone quality, ~12 KB/s while talking) ----------
 const RATE = 12000, CHUNK = 1200;               // 100 ms per message
 function mulaw(s) {
@@ -356,6 +388,8 @@ export class Multiplayer {
       const ok = await this.micOpening;
       this.micOpening = null;
       if (!ok) { this.talkHeld = false; return; }
+      // let go while the browser was asking: don't leave the mic open
+      if (!this.talkHeld) { this.micOffT = setTimeout(() => this.closeMic(), 2500); return; }
     }
     const was = this.talking;
     this.talking = !!this.mic && this.talkHeld;
@@ -367,13 +401,29 @@ export class Multiplayer {
     this.emit('talk', this.talking);
   }
 
+  // ask for the mic now, from a tap (shows the browser's Allow question), then let it go straight away so
+  // phones keep playing on the loudspeaker; holding TALK later opens it without asking again
+  async askMic() {
+    if (this.mic) return { ok: true };
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach((t) => t.stop());
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not iOS */ }
+      this.micOk = true;
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, reason: micReason(e) };
+    }
+  }
+
   async openMic() {
     try {
       this.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
     } catch (e) {
-      this.emit('mic', 'denied', e);
+      this.emit('mic', 'denied', micReason(e));
       return false;
     }
+    this.micOk = true;
     const cap = new (window.AudioContext || window.webkitAudioContext)();
     if (cap.state !== 'running') await cap.resume().catch(() => {});
     this.cap = cap;

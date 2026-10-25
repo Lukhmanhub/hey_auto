@@ -39,6 +39,7 @@
     <div class="stand hud-g" id="stand" hidden><ol id="stand-list"></ol><div class="stand-hint" id="stand-hint"></div></div>
     <div id="mp-tags"></div>
     <div class="near-hint" id="near-hint" hidden></div>
+    <div class="mic-help" id="mic-help" role="alertdialog" hidden><b>Microphone blocked</b><p id="mic-help-t"></p><div><button class="mh-try" id="mic-try">Try again</button><button class="mh-x" id="mic-x">Close</button></div></div>
     <div class="chatbox" id="chatbox" hidden><input id="chat-in" maxlength="80" autocomplete="off" placeholder="Say something to drivers nearby…" /><button id="chat-send" aria-label="Send">Send</button></div>
     <div class="map hud-g"><canvas id="minimap" width="220" height="220"></canvas></div>
     <div class="roadname hud-g" id="roadname"></div>
@@ -163,6 +164,11 @@
           <div class="lb-share"><button class="ghost" id="lb-copy">Copy link</button><button class="ghost" id="lb-sharebtn">Share</button></div>
         </div>
         <ul class="lb-list" id="lb-list"></ul>
+        <div class="lb-voice" id="lb-voice" data-st="ask">
+          <span class="lb-mic" aria-hidden="true"></span>
+          <div><b id="lb-vt">Talk to your friends</b><small id="lb-vd">Your phone will ask to use the microphone. Tap Allow.</small></div>
+          <button class="ghost" id="lb-vbtn">Allow microphone</button>
+        </div>
         <p class="lb-hint" id="lb-hint"></p>
         <button class="primary lb-go" id="lb-go">Start shift together</button>
       </div>

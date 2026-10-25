@@ -1,5 +1,5 @@
 // The auto stand lobby: make a stand (get a code + link) or join one, see who's in, start the shift.
-import { Multiplayer, MAX, HEAR, cleanCode, codeFromUrl } from './multiplayer.js';
+import { Multiplayer, MAX, HEAR, cleanCode, codeFromUrl, micHelp, micPermission } from './multiplayer.js';
 import { TOUCH } from './touch.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,7 +20,7 @@ export function initLobby({ mp, track, onShift, startEnv }) {
   };
 
   const show = (on) => { lobby.hidden = !on; title.hidden = on; };
-  const room = (on) => { $('lb-choose').hidden = on; $('lb-room').hidden = !on; err.textContent = ''; };
+  const room = (on) => { $('lb-choose').hidden = on; $('lb-room').hidden = !on; err.textContent = ''; if (on) checkVoice(); };
   const setBusy = (b, btn, label) => {
     busy = b;
     for (const id of ['lb-create', 'lb-join']) $(id).disabled = b;
@@ -64,6 +64,33 @@ export function initLobby({ mp, track, onShift, startEnv }) {
       err.textContent = netError(e);
     }
     setBusy(false, $('lb-join'), 'Join');
+  });
+
+  // voice: ask for the microphone here, from a real tap, before the shift starts
+  const voice = $('lb-voice'), vt = $('lb-vt'), vd = $('lb-vd'), vbtn = $('lb-vbtn');
+  const talkKey = TOUCH ? 'TALK' : 'V';
+  const setVoice = (st, reason) => {
+    voice.dataset.st = st;
+    mp.micOk = st === 'on';
+    render();
+    if (st === 'on') { vt.textContent = 'Voice is on'; vd.textContent = `Hold ${talkKey} near a friend to talk.`; }
+    else if (st === 'off') { vt.textContent = 'Microphone blocked'; vd.textContent = micHelp(reason); vbtn.textContent = 'Try again'; }
+    else { vt.textContent = 'Talk to your friends'; vd.textContent = 'Your phone will ask to use the microphone. Tap Allow.'; vbtn.textContent = 'Allow microphone'; }
+  };
+  const checkVoice = async () => {
+    if (mp.micOk) return setVoice('on');
+    const p = await micPermission();
+    if (p === 'granted') { mp.micOk = true; setVoice('on'); }
+    else if (p === 'denied') setVoice('off', 'denied');
+    else setVoice('ask');
+  };
+  vbtn.addEventListener('click', async () => {
+    vbtn.disabled = true; vbtn.textContent = 'Waiting for you…';
+    mp.audio();
+    const r = await mp.askMic();
+    vbtn.disabled = false;
+    track('mp', { k: r.ok ? 'mic-ok' : `mic-${r.reason}` });
+    setVoice(r.ok ? 'on' : 'off', r.reason);
   });
 
   $('lb-copy').addEventListener('click', () => copy($('lb-copy')));
@@ -114,7 +141,7 @@ export function initLobby({ mp, track, onShift, startEnv }) {
       list.appendChild(li);
     }
     if (arrived) mp.chirp(true, 0.06);
-    const n = mp.roster.length, voice = `Hold ${TOUCH ? 'TALK' : 'V'} to talk to drivers within ${HEAR} m.`;
+    const n = mp.roster.length, voice = mp.micOk ? `Hold ${talkKey} to talk to drivers within ${HEAR} m.` : '';
     if (mp.host) {
       go.hidden = false;
       go.textContent = n > 1 ? `Start shift together · ${n} drivers` : 'Start shift alone (friends can join later)';
