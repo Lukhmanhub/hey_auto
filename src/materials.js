@@ -92,10 +92,48 @@ function windowLitTexture() {
   return t;
 }
 
+// Tileable blotchy noise: where it's brightest, water collects on the road.
+function puddleMask() {
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, S, S);
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < 70; k++) {
+    const cx = r() * S, cy = r() * S, rad = 6 + r() * 30, a = 0.25 + r() * 0.5;
+    for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {   // wrap around the edges so it tiles
+      const g = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, rad);
+      g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = g; x.fillRect(cx + ox - rad, cy + oy - rad, rad * 2, rad * 2);
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 export function makeMaterials() {
   const asph = { map: tex('asphalt_02_diffuse'), normalMap: tex('asphalt_02_nor_gl', { srgb: false }), roughnessMap: tex('asphalt_02_rough', { srgb: false }) };
   for (const k in asph) asph[k].repeat.set(2, 2);
   const road = new THREE.MeshStandardMaterial({ ...asph, color: '#d8d6d2', roughness: 1, metalness: 0, normalScale: new THREE.Vector2(0.8, 0.8), envMapIntensity: 0.5 });
+  // Puddles: a world-space mask of low spots. As the road gets wet they go mirror-smooth (roughness ~0.1),
+  // darker and flat, so they reflect the sky; the rest of the asphalt only drops to ~0.8.
+  const roadWet = { value: 0 };
+  road.onBeforeCompile = (sh) => {
+    sh.uniforms.uRoadWet = roadWet;
+    sh.uniforms.uRoadPuddle = { value: puddleMask() };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vRoadXZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRoadXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vRoadXZ; uniform float uRoadWet; uniform sampler2D uRoadPuddle; float roadPud = 0.0;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float roadPm = texture2D(uRoadPuddle, vRoadXZ / 26.0).r * 0.65 + texture2D(uRoadPuddle, vRoadXZ / 9.0 + 0.37).r * 0.35;
+        roadPud = smoothstep(0.66 - uRoadWet * 0.2, 0.74 - uRoadWet * 0.2, roadPm) * smoothstep(0.08, 0.35, uRoadWet);
+        diffuseColor.rgb *= 1.0 - 0.45 * roadPud;`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.1, roadPud);')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize(mix(normal, normalize(vNormal), roadPud));');
+  };
 
   const roof = new THREE.MeshStandardMaterial({
     vertexColors: true, map: tex('clay_roof_tiles_02_diffuse'), normalMap: tex('clay_roof_tiles_02_nor_gl', { srgb: false }),
@@ -130,16 +168,17 @@ export function makeMaterials() {
   };
   walls.customProgramCacheKey = () => 'wallsNight';
   const grassTex = tex('leafy_grass_diffuse', { repeat: 700 });
-  const grass = new THREE.MeshStandardMaterial({ map: grassTex, color: '#a8c08a', roughness: 1, envMapIntensity: 0.3 });
+  const grass = new THREE.MeshStandardMaterial({ map: grassTex, color: '#86b062', roughness: 1, envMapIntensity: 0.3 });
 
   // the monsoon makes every hard surface darker and glossier
   const dry = new Map([road, roof, laterite, plaster, pave, walls].map((m) => [m, { color: m.color.clone(), roughness: m.roughness, env: m.envMapIntensity }]));
   function setWet(w) {
+    roadWet.value = w;
     for (const [m, d] of dry) {
-      // wet surfaces absorb more light (darker albedo) and turn glossy, so the sky shows in them
-      m.color.copy(d.color).multiplyScalar(1 - (m === road ? 0.68 : 0.35) * w);
-      m.roughness = d.roughness * (1 - (m === road ? 0.8 : 0.4) * w);
-      m.envMapIntensity = d.env * (1 + (m === road ? 0.45 : 0.3) * w);
+      // wet surfaces absorb more light (darker albedo) and turn glossier, so the sky shows in them
+      m.color.copy(d.color).multiplyScalar(1 - (m === road ? 0.45 : 0.35) * w);
+      m.roughness = d.roughness * (1 - (m === road ? 0.2 : 0.4) * w);
+      m.envMapIntensity = d.env * (1 + (m === road ? 2.2 : 0.3) * w);
     }
   }
   return { road, roof, laterite, plaster, pave, walls, grass, setWet, setNight: (n) => { walls.emissiveIntensity = n * 1.3; } };

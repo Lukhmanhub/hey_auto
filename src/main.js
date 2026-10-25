@@ -26,7 +26,7 @@ stats.initAnalytics({ renderer, getStats: () => { try { return { rides: missions
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // PCF honours shadow.radius: wide, soft overcast shadows
 
 // ---------- Phone graphics safety net ----------
 // Some phone GPUs (Samsung's Exynos/Xclipse, older Mali) choke on the full effect chain and show a blank
@@ -143,7 +143,9 @@ const sky = new THREE.Mesh(
 );
 sky.frustumCulled = false;
 scene.add(sky);
-scene.fog = new THREE.Fog(CLEAR.horizon.clone(), CLEAR.fogNear, CLEAR.fogFar);
+// Kochi haze: exponential fog, cool and faintly green-grey, so palms a couple of blocks away fade out
+const HAZE = new THREE.Color(0xc9d1d0);
+scene.fog = new THREE.FogExp2(HAZE.clone(), 0.012);
 
 const hemi = new THREE.HemisphereLight('#dcecff', '#6b7a45', CLEAR.hemi);
 scene.add(hemi);
@@ -153,18 +155,28 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 260 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.6;
+sun.shadow.radius = 3.5;
 scene.add(sun, sun.target);
 
-// soft monsoon clouds
+// soft cumulus: piled-up puffs with bright tops and flat, greyer undersides
 const cloudTex = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const x = c.getContext('2d');
-  for (let k = 0; k < 9; k++) {
-    const cx = 30 + Math.random() * 68, cy = 50 + Math.random() * 28, r = 22 + Math.random() * 20;
-    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  for (let k = 0; k < 22; k++) {
+    const cx = 40 + Math.random() * 176, cy = 52 + Math.random() * 34 - Math.max(0, 40 - Math.abs(cx - 128)) * 0.5, r = 18 + Math.random() * 26;
+    const g = x.createRadialGradient(cx, cy - r * 0.3, 0, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.6, 'rgba(236,240,242,.55)'); g.addColorStop(1, 'rgba(225,230,233,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 128);
   }
+  // shade the base and cut it flat
+  x.globalCompositeOperation = 'source-atop';
+  const shade = x.createLinearGradient(0, 40, 0, 100);
+  shade.addColorStop(0, 'rgba(150,160,168,0)'); shade.addColorStop(1, 'rgba(150,160,168,.55)');
+  x.fillStyle = shade; x.fillRect(0, 0, 256, 128);
+  x.globalCompositeOperation = 'destination-out';
+  const cut = x.createLinearGradient(0, 92, 0, 108);
+  cut.addColorStop(0, 'rgba(0,0,0,0)'); cut.addColorStop(1, 'rgba(0,0,0,1)');
+  x.fillStyle = cut; x.fillRect(0, 92, 256, 36);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
 const cloudMat = new THREE.SpriteMaterial({ map: cloudTex, fog: false, transparent: true, depthWrite: false, opacity: 0.9 });
@@ -177,11 +189,12 @@ for (let k = 0; k < 16; k++) {
   s.scale.set(700 + Math.random() * 500, 45 + Math.random() * 30, 1);
   clouds.add(s);
 }
-for (let k = 0; k < 34; k++) {
+for (let k = 0; k < 46; k++) {
   const s = new THREE.Sprite(cloudMat.clone());
   const a = Math.random() * Math.PI * 2, r = 350 + Math.random() * 900;
-  s.position.set(Math.cos(a) * r, 140 + Math.random() * 160, Math.sin(a) * r);
-  s.scale.set(260 + Math.random() * 260, 110 + Math.random() * 60, 1);
+  s.position.set(Math.cos(a) * r, 120 + Math.random() * 150, Math.sin(a) * r);
+  const w = 280 + Math.random() * 320;
+  s.scale.set(w, w * (0.42 + Math.random() * 0.12), 1);
   clouds.add(s);
 }
 scene.add(clouds);
@@ -211,7 +224,7 @@ const vfx = new VFX(scene);
 const skies = await loadSkies(renderer);
 scene.environment = skies.clear;
 scene.environmentIntensity = CLEAR.env;
-const player = new Player(scene, gx(3) + 2.5, gx(2) + 22, 0);
+const player = new Player(scene, gx(3) + 1.75, gx(2) + 22, 0);
 // your driver: khaki shirt, mundu, hands on the handlebar
 if (humansReady()) {
   const d = createHuman(Math.random, 'driver');
@@ -360,6 +373,10 @@ function setPaused(p, menu = true) {
   sound.radio?.suspend(p);
 }
 let rainAmt = 0, wind = 0.35;
+// how wet the roads are: soaks in fast when it rains, then takes about an hour of game time to dry
+// ("Roads drying up"); Kochi never quite dries out, so a few damp patches always stay
+const DAMP = 0.14;
+let wetness = DAMP;
 
 // Phones have no Q / [ ] / R / T / M keys, so the pause menu carries the radio and town controls.
 function syncPauseExtras() {
@@ -663,7 +680,7 @@ function updateCamera(dt) {
 let gameHour = 7.5;                 // shift starts 7:30 am
 const weather = new Weather();
 let lastHourInt = Math.floor(gameHour), nightAmt = 0;
-const _grey = new THREE.Color(), _cc = new THREE.Color(), _warm = new THREE.Color(), _cool = new THREE.Color(), _cd = new THREE.Vector3();
+const _haze = new THREE.Color(), _grey = new THREE.Color(), _cc = new THREE.Color(), _warm = new THREE.Color(), _cool = new THREE.Color(), _cd = new THREE.Vector3();
 
 function updateEnv(dt) {
   // the clock only runs while you're driving
@@ -678,16 +695,19 @@ function updateEnv(dt) {
   if (hInt !== lastHourInt) { lastHourInt = hInt; onHour(hInt); }
 
   rainAmt = clamp(rainAmt + (raining ? dt : -dt) / 3, 0, 1);
+  wetness = raining ? Math.min(1, wetness + dt / 4) : Math.max(DAMP, wetness - dt / 70);
   const k = skyAt(gameHour);
   nightAmt = k.night;
   // clouds and rain grey the sky and dim the sun
   const overcast = clamp(Math.max(rainAmt, weather.cloud * 0.55), 0, 1);
   const grey = (src, out, dark) => { const l = src.r * 0.3 + src.g * 0.59 + src.b * 0.11; _grey.setRGB(l * dark, l * dark * 1.03, l * dark * 1.05); out.copy(src).lerp(_grey, overcast); };
   grey(k.top, skyU.top.value, 0.75); grey(k.horizon, skyU.horizon.value, 0.85);
+  // by day the horizon and the fog share the cool green-grey haze, so distant palms melt into the sky
+  const lowSun = skyU.sunLow.value;
+  skyU.horizon.value.lerp(_haze.copy(HAZE).multiplyScalar(lerp(1, 0.6, overcast)), (1 - nightAmt) * (1 - lowSun * 0.7) * 0.55);
   scene.fog.color.copy(skyU.horizon.value);
-  scene.fog.near = lerp(CLEAR.fogNear, RAIN.fogNear, rainAmt);
-  scene.fog.far = lerp(k.fogFar, RAIN.fogFar, rainAmt);
-  skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt);
+  scene.fog.density = lerp(6 / k.fogFar, 0.019, rainAmt);
+  skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt) * 0.5;   // the sun is a bright smudge behind the haze
   skyU.uNight.value = nightAmt * (1 - overcast);
   skyU.sunDir.value.copy(sunDirAt(gameHour));
   skyU.sunCol.value.copy(k.sunCol);
@@ -702,10 +722,10 @@ function updateEnv(dt) {
   post.exposure = k.exposure * lerp(1, 0.94, rainAmt);
   scene.environment = overcast > 0.5 ? skies.overcast ?? skies.clear : skies.clear;
   scene.environmentIntensity = lerp(k.env, k.env * 1.3, rainAmt);
-  world.setWet(rainAmt);
+  world.setWet(wetness);
   world.setNight?.(nightAmt);
   traffic.setNight?.(nightAmt);
-  dustU.uWet.value = rainAmt;
+  dustU.uWet.value = wetness;
   dustU.uDust.value = 1 - nightAmt * 0.4;
   // clouds take the light: white at noon, gold/rose on the sun side at sunset, grey-violet away from it, near-black at night
   const sd = skyU.sunDir.value, low = skyU.sunLow.value;

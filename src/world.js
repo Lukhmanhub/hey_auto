@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  N, B, HALF, BOUND, ROAD_HALF, LANE, CANAL_ROW, SPEED_LIMIT, LANDMARKS, SIGNALS, ONE_WAY_ROWS, ONE_WAY_COLS,
+  N, B, HALF, BOUND, ROAD_HALF, LANE, KERB, CANAL_ROW, SPEED_LIMIT, LANDMARKS, SIGNALS, ONE_WAY_ROWS, ONE_WAY_COLS,
   TOWN, TOWN_ML, gx, blockKind, hasFootpath, isWaterBlock, mulberry32, pick,
 } from './config.js';
 import { Bucket, wallBox, noiseTexture, signTexture, Colliders, FONT_ML, FONT_PAINT } from './util.js';
@@ -78,10 +78,10 @@ const hipRoof = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4);
 
 // Is (x, z) on (or within `margin` of) any road strip?
 export function onRoad(x, z, margin = 0) {
-  const lim = HALF + ROAD_HALF + margin;
+  const lim = HALF + KERB + margin;
   for (let k = 0; k <= N; k++) {
-    if (Math.abs(x - gx(k)) < ROAD_HALF + margin && Math.abs(z) < lim) return true;
-    if (Math.abs(z - gx(k)) < ROAD_HALF + margin && Math.abs(x) < lim) return true;
+    if (Math.abs(x - gx(k)) < KERB + margin && Math.abs(z) < lim) return true;
+    if (Math.abs(z - gx(k)) < KERB + margin && Math.abs(x) < lim) return true;
   }
   return false;
 }
@@ -189,8 +189,8 @@ export function buildWorld(scene) {
           ? marks.box(w, 0.02, d, '#ecebe6', gx(k) + across, 0.035, along)
           : marks.box(d, 0.02, w, '#ecebe6', along, 0.035, gx(k) + across);
         for (let s = a; s + 3 <= bb; s += 6) P(s + 1.5, 0, 0.15, 3);
-        P((a + bb) / 2, -4.65, 0.14, B - 10);
-        P((a + bb) / 2, 4.65, 0.14, B - 10);
+        P((a + bb) / 2, -(ROAD_HALF - 0.25), 0.12, B - 10);
+        P((a + bb) / 2, ROAD_HALF - 0.25, 0.12, B - 10);
         const oneway = vertical ? ONE_WAY_COLS[k] : ONE_WAY_ROWS[k];
         if (oneway !== undefined) {
           for (const lane of [-LANE, LANE]) for (const t of [0.3, 0.7]) {
@@ -210,12 +210,89 @@ export function buildWorld(scene) {
     for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lx = fz, lz = -fx;                            // left of travel
       const sx = x - fx * 8.9 + lx * LANE, sz = z - fz * 8.9 + lz * LANE;
-      if (fx) marks.box(0.45, 0.02, 4.8, '#f4f4f0', sx, 0.037, sz); else marks.box(4.8, 0.02, 0.45, '#f4f4f0', sx, 0.037, sz);
-      for (let c = -4; c <= 4; c += 1.25) {
+      if (fx) marks.box(0.45, 0.02, ROAD_HALF - 0.3, '#f4f4f0', sx, 0.037, sz); else marks.box(ROAD_HALF - 0.3, 0.02, 0.45, '#f4f4f0', sx, 0.037, sz);
+      for (let c = -(ROAD_HALF - 0.7); c <= ROAD_HALF - 0.6; c += 1.15) {
         const zx = x - fx * 7.1 + lx * c, zz = z - fz * 7.1 + lz * c;
         if (fx) marks.box(2.2, 0.02, 0.6, '#f4f4f0', zx, 0.037, zz); else marks.box(0.6, 0.02, 2.2, '#f4f4f0', zx, 0.037, zz);
       }
     }
+  }
+
+  // ---------------- Road edges: broken shoulder, open drain, slab covers ----------------
+  // Kochi town roads are narrow: the asphalt stops ragged at a strip of laterite gravel, then an open
+  // concrete drain (half covered with slabs, a few cracked or tilted) runs along the kerb.
+  const DRAIN_IN = ROAD_HALF + 0.7, DRAIN_OUT = KERB - 0.04;
+  const SHOULDER = ['#8a6e52', '#7c7468', '#86705a', '#6f6a60'];
+  const SLAB = ['#aaa69c', '#9d998e', '#b4b0a5', '#a29a8a'];
+  for (let k = 0; k <= N; k++) for (const vertical of [true, false]) for (let m = 0; m < N; m++) {
+    if (vertical && m === CANAL_ROW) continue;                       // bridge over the backwater
+    const s0 = gx(m) + KERB, s1 = gx(m + 1) - KERB;
+    // P(along, lateral offset) → world x/z;  B_(len, lateral width, height, colour, along centre, lateral centre, y)
+    const P = (a, l) => (vertical ? [gx(k) + l, a] : [a, gx(k) + l]);
+    const box = (bucket, len, wid, h, color, a, l, y, tilt = 0) => {
+      const [x, z] = P(a, l);
+      if (vertical) bucket.box(wid, h, len, color, x, y, z, tilt, 0, 0); else bucket.box(len, h, wid, color, x, y, z, 0, 0, tilt);
+    };
+    for (const side of [-1, 1]) {
+      // shoulder: gravel and laterite in patches, running into the junction corners
+      for (let a = gx(m) + ROAD_HALF; a < gx(m + 1) - ROAD_HALF - 0.01;) {
+        const len = Math.min(2 + prand() * 5, gx(m + 1) - ROAD_HALF - a);
+        box(flat, len, DRAIN_IN - ROAD_HALF + 0.02, 0.02, SHOULDER[Math.floor(prand() * SHOULDER.length)], a + len / 2, side * (ROAD_HALF + (DRAIN_IN - ROAD_HALF) / 2), 0.018);
+        a += len;
+      }
+      // ragged asphalt edge: broken chunks sticking out into the gravel
+      for (let a = s0; a < s1; a += 0.8 + prand() * 2.2) {
+        const len = 0.3 + prand() * 0.9;
+        box(flat, len, 0.12 + prand() * 0.3, 0.012, prand() < 0.5 ? '#4b4b49' : '#555350', a, side * (ROAD_HALF + 0.08), 0.03, 0);
+      }
+      // the drain: inner lip, dark water, outer lip at the kerb
+      box(solid, s1 - s0, 0.12, 0.24, '#a5a196', (s0 + s1) / 2, side * (DRAIN_IN + 0.06), 0.1);
+      box(solid, s1 - s0, 0.1, 0.24, '#a5a196', (s0 + s1) / 2, side * (DRAIN_OUT - 0.05), 0.1);
+      box(flat, s1 - s0, DRAIN_OUT - DRAIN_IN - 0.2, 0.01, '#28312a', (s0 + s1) / 2, side * (DRAIN_IN + DRAIN_OUT) / 2, 0.012);
+      // slab covers: long covered runs (shop fronts, gates) with open gaps between
+      let covered = prand() < 0.6, run = 0;
+      for (let a = s0 + 0.5; a < s1 - 0.5; a += 0.94) {
+        if (run-- <= 0) { covered = !covered; run = covered ? 3 + Math.floor(prand() * 12) : 2 + Math.floor(prand() * 9); }
+        if (!covered) continue;
+        const broken = prand() < 0.06, tilt = prand() < 0.05 ? (prand() - 0.5) * 0.25 : 0;
+        box(solid, broken ? 0.45 : 0.9, DRAIN_OUT - DRAIN_IN + 0.04, 0.07, broken ? '#8a867c' : SLAB[Math.floor(prand() * SLAB.length)],
+          a + (broken ? 0.22 : 0), side * (DRAIN_IN + DRAIN_OUT) / 2, 0.255, tilt);
+      }
+    }
+  }
+  // gravel fills the corners where two roads' shoulders meet
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    const c = (ROAD_HALF + KERB) / 2;
+    flat.box(KERB - ROAD_HALF, 0.02, KERB - ROAD_HALF, SHOULDER[(i + j) % SHOULDER.length], gx(i) + sx * c, 0.017, gx(j) + sz * c);
+  }
+
+  // patched, tired asphalt: darker fresh patches, faded old ones, and potholes
+  const patchB = new Bucket();
+  const potB = new Bucket();
+  const potGeo = new THREE.CircleGeometry(1, 10);
+  for (let n = 0; n < 420; n++) {
+    const k = Math.floor(prand() * (N + 1)), vertical = prand() < 0.5;
+    const along = -HALF + prand() * HALF * 2;
+    const nearJ = Math.abs(((along + HALF) % B + B) % B - B / 2) > B / 2 - KERB;
+    if (nearJ) continue;
+    const cross = vertical ? along : gx(k);
+    if (cross > zc0 - 1 && cross < zc1 + 1) continue;
+    const lat = (prand() - 0.5) * 2 * (ROAD_HALF - 0.8);
+    const x = vertical ? gx(k) + lat : along, z = vertical ? along : gx(k) + lat;
+    if (prand() < 0.3) {
+      potB.add(potGeo, prand() < 0.5 ? '#232323' : '#2c2b29', x, 0.026, z, -Math.PI / 2, 0, prand() * 3, 0.25 + prand() * 0.45, 0.2 + prand() * 0.35, 1);
+    } else {
+      const w = 0.8 + prand() * 2.6, d = 0.6 + prand() * 1.8;
+      const g = new THREE.PlaneGeometry(w, d);
+      const uv = g.attributes.uv;
+      for (let q = 0; q < uv.count; q++) uv.setXY(q, uv.getX(q) * w / 5 + prand(), uv.getY(q) * d / 5 + prand());
+      patchB.add(g, prand() < 0.65 ? '#7d7c79' : '#c9c4ba', x, 0.024, z, -Math.PI / 2, 0, (vertical ? 0 : Math.PI / 2) + (prand() - 0.5) * 0.2);
+    }
+  }
+  {
+    const patchMat = new THREE.MeshStandardMaterial({ map: roadMat.map, vertexColors: true, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, envMapIntensity: 0.4 });
+    scene.add(patchB.mesh(patchMat, { cast: false }));
+    scene.add(potB.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, polygonOffset: true, polygonOffsetFactor: -1.5 }), { cast: false }));
   }
 
   // ---------------- Footpaths / block ground ----------------
@@ -775,20 +852,36 @@ export function buildWorld(scene) {
       : { x: ox + B / 2 + 6, z: oz + 6.5, face: [0, -1], name: lm.name, ml: lm.ml, short: lm.short, shortMl: lm.shortMl };
   }
 
-  // ---------------- Electric poles + wires ----------------
+  // ---------------- KSEB poles + sagging cables ----------------
+  // Tapered prestressed-concrete poles every ~27 m just behind the kerb (one InstancedMesh), each span
+  // strung with three taut power lines on the cross-arm and a few droopier cable-TV / fibre lines below.
   const poleB = new Bucket();
-  poleB.box(0.26, 8.6, 0.26, '#a9a59c', 0, 4.3, 0);
-  poleB.box(1.8, 0.14, 0.14, '#6b6b6b', 0, 8.1, 0);
-  for (const s of [-0.7, 0, 0.7]) poleB.add(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 6), '#e8e8e8', s, 8.25, 0);
+  poleB.add(new THREE.CylinderGeometry(0.1, 0.17, 9, 4, 1).rotateY(Math.PI / 4), '#b3aea3', 0, 4.5, 0, 0, 0, 0, 1, 1, 0.75);
+  poleB.box(0.08, 0.5, 0.08, '#8f8a80', 0, 0.25, 0);                                   // base collar
+  poleB.box(1.9, 0.09, 0.09, '#5d5d5a', 0, 8.55, 0);                                   // HT cross-arm (angle iron)
+  poleB.box(1.2, 0.07, 0.07, '#5d5d5a', 0, 7.7, 0);                                    // LT cross-arm
+  for (const sx of [-0.85, 0, 0.85]) poleB.add(new THREE.CylinderGeometry(0.045, 0.06, 0.22, 6), '#ece9e2', sx, 8.72, 0);
+  for (const sx of [-0.5, 0.5]) poleB.add(new THREE.CylinderGeometry(0.035, 0.045, 0.16, 6), '#ece9e2', sx, 7.82, 0);
+  poleB.box(0.32, 0.4, 0.16, '#77736a', 0, 3.1, 0.12);                                 // junction box / meter board
   const poleGeo = poleB.merge();
   const poles = [];
-  const wirePts = [];
+  const cableB = new Bucket();
+  const tubeSpan = (a, b, sag, radius, color, droop = 0) => {
+    const mid = new THREE.Vector3().lerpVectors(a, b, 0.5);
+    mid.y -= sag;
+    const side = new THREE.Vector3(b.z - a.z, 0, a.x - b.x).normalize().multiplyScalar(droop);
+    const curve = new THREE.CatmullRomCurve3([a, new THREE.Vector3().lerpVectors(a, mid, 0.5).add(side.clone().multiplyScalar(0.5)).setY(a.y - sag * 0.72), mid.clone().add(side), new THREE.Vector3().lerpVectors(mid, b, 0.5).add(side.clone().multiplyScalar(0.5)).setY(b.y - sag * 0.72), b]);
+    cableB.add(new THREE.TubeGeometry(curve, 12, radius, 3, false), color);
+  };
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
   for (let k = 0; k <= N; k++) {
     for (const vertical of [true, false]) {
-      let off = k < N ? 7.3 : -7.3;
-      if (!vertical && k === CANAL_ROW) off = -7.3;
+      let off = k < N ? KERB + 0.55 : -(KERB + 0.55);
+      if (!vertical && k === CANAL_ROW) off = -(KERB + 0.55);
+      // how this road's cables are strung: 1–5 extra service cables, each with its own height and slack
+      const extra = Array.from({ length: 1 + Math.floor(prand() * 5) }, () => ({ y: 6.1 + prand() * 1.2, dx: (prand() - 0.5) * 0.5, sag: 0.6 + prand() * 0.9, r: 0.016 + prand() * 0.02, c: prand() < 0.7 ? '#151515' : '#2a2a2a' }));
       let prev = null;
-      for (let m = 0; m < N; m++) for (const t of [10, 30, 50]) {
+      for (let m = 0; m < N; m++) for (const t of [13.5, 40.5]) {
         const along = gx(m) + t;
         const x = vertical ? gx(k) + off : along, z = vertical ? along : gx(k) + off;
         const inCanal = z > gx(CANAL_ROW) && z < gx(CANAL_ROW + 1);
@@ -800,24 +893,22 @@ export function buildWorld(scene) {
           else posters.add(x, 2.2, z + sg * 0.15, 0, sg, 0.36, 0.52, Math.floor(prand() * posters.count), prand() < 0.6);
         }
         col.addCentered(x, z, 0.35, 0.35, 'pole');
-        if (prev) for (const s of [-0.7, 0, 0.7]) {
-          const ax = vertical ? prev.x + s : prev.x, az = vertical ? prev.z : prev.z + s;
-          const bx = vertical ? x + s : x, bz = vertical ? z : z + s;
-          for (let q = 0; q < 8; q++) {
-            const t0 = q / 8, t1 = (q + 1) / 8;
-            const y0 = 8.3 - 0.7 * 4 * t0 * (1 - t0), y1 = 8.3 - 0.7 * 4 * t1 * (1 - t1);
-            wirePts.push(ax + (bx - ax) * t0, y0, az + (bz - az) * t0, ax + (bx - ax) * t1, y1, az + (bz - az) * t1);
-          }
+        if (prev) {
+          const at = (px, pz, lat, y) => (vertical ? V(px + lat, y, pz) : V(px, y, pz + lat));
+          for (const s of [-0.85, 0, 0.85]) tubeSpan(at(prev.x, prev.z, s, 8.8), at(x, z, s, 8.8), 0.35 + prand() * 0.1, 0.014, '#1d1d1d');
+          for (const e of extra) tubeSpan(at(prev.x, prev.z, e.dx, e.y), at(x, z, e.dx, e.y + (prand() - 0.5) * 0.3), e.sag * (0.8 + prand() * 0.4), e.r, e.c, (prand() - 0.5) * 0.35);
         }
         prev = { x, z };
       }
     }
   }
+  const wirePts = [];   // party bunting strings still use plain lines
   const poleMesh = new THREE.InstancedMesh(poleGeo, vcMat, poles.length);
   const tmp = new THREE.Object3D();
   poles.forEach((p, n) => { tmp.position.set(p.x, 0, p.z); tmp.rotation.set(0, p.ry, 0); tmp.scale.set(1, 1, 1); tmp.updateMatrix(); poleMesh.setMatrixAt(n, tmp.matrix); });
   poleMesh.castShadow = true;
   scene.add(poleMesh);
+  scene.add(cableB.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), { cast: false, receive: false }));
 
   // ---------------- Junction flex boards ----------------
   for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
@@ -888,14 +979,14 @@ export function buildWorld(scene) {
     const mats = { x: { R: mk(LAMP.R), Y: mk(LAMP.Y), G: mk(LAMP.G) }, z: { R: mk(LAMP.R), Y: mk(LAMP.Y), G: mk(LAMP.G) } };
     for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lx = fz, lz = -fx;
-      const px = x - fx * 9.6 + lx * 6.4, pz = z - fz * 9.6 + lz * 6.4;
+      const px = x - fx * 9.6 + lx * 5.6, pz = z - fz * 9.6 + lz * 5.6;
       solid.add(new THREE.CylinderGeometry(0.11, 0.13, 4.6, 8), '#3a3a3a', px, 2.3, pz);
       col.addCentered(px, pz, 0.4, 0.4, 'pole');
     }
     for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lx = fz, lz = -fx, axis = fx ? 'x' : 'z';
       // near head (beside the stop line, on your left) and far head (across the junction, on your right)
-      for (const [hx, hz] of [[x - fx * 9.6 + lx * 6.4, z - fz * 9.6 + lz * 6.4], [x + fx * 9.6 - lx * 6.4, z + fz * 9.6 - lz * 6.4]]) {
+      for (const [hx, hz] of [[x - fx * 9.6 + lx * 5.6, z - fz * 9.6 + lz * 5.6], [x + fx * 9.6 - lx * 5.6, z + fz * 9.6 - lz * 5.6]]) {
         const bx = hx - fx * 0.24, bz = hz - fz * 0.24;
         solid.box(fx ? 0.3 : 0.72, 1.9, fx ? 0.72 : 0.3, '#151515', bx, 4.35, bz);
         // yellow-and-black backing board, like Kerala's junction signals
@@ -1112,11 +1203,11 @@ export function buildWorld(scene) {
   const pud = new Bucket();
   const disc = new THREE.CircleGeometry(1, 20);
   for (let n = 0; n < 170; n++) {
-    const k = Math.floor(prand() * (N + 1)), along = -HALF + prand() * HALF * 2, lat = (prand() < 0.5 ? -1 : 1) * (1.4 + prand() * 3.2);
+    const k = Math.floor(prand() * (N + 1)), along = -HALF + prand() * HALF * 2, lat = (prand() < 0.5 ? -1 : 1) * (0.5 + prand() * (ROAD_HALF - 1.3));
     const vertical = prand() < 0.5;
     const z0 = vertical ? along : gx(k) + lat;
     if (z0 > zc0 - 1 && z0 < zc1 + 1) continue;
-    pud.add(disc, '#ffffff', vertical ? gx(k) + lat : along, 0.03, z0, -Math.PI / 2, 0, prand() * 3, 0.8 + prand() * 2.2, 0.5 + prand() * 1.1, 1);
+    pud.add(disc, '#ffffff', vertical ? gx(k) + lat : along, 0.03, z0, -Math.PI / 2, 0, prand() * 3, 0.6 + prand() * 1.5, 0.4 + prand() * 0.8, 1);
   }
   const puddleMat = new THREE.MeshStandardMaterial({ color: '#23282b', roughness: 0.03, metalness: 0.15, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, envMapIntensity: 1.6 });
   const puddles = pud.mesh(puddleMat, { cast: false });
@@ -1125,11 +1216,11 @@ export function buildWorld(scene) {
 
   // ---------------- Queries ----------------
   function zoneAt(x, z) {
-    if (Math.abs(x) > HALF + ROAD_HALF || Math.abs(z) > HALF + ROAD_HALF) return 'grass';
+    if (Math.abs(x) > HALF + KERB || Math.abs(z) > HALF + KERB) return 'grass';
     const i = Math.min(N - 1, Math.max(0, Math.floor((x + HALF) / B)));
     const j = Math.min(N - 1, Math.max(0, Math.floor((z + HALF) / B)));
     const lx = x - gx(i), lz = z - gx(j);
-    if (lx < ROAD_HALF || lx > B - ROAD_HALF || lz < ROAD_HALF || lz > B - ROAD_HALF) return 'road';
+    if (lx < KERB || lx > B - KERB || lz < KERB || lz > B - KERB) return 'road';
     if (isWaterBlock(i, j)) return 'grass';
     const kind = blockKind(i, j);
     if (kind === 'paddy') return 'paddy';

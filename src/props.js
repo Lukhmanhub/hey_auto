@@ -103,20 +103,10 @@ export function buildProps(ctx) {
   for (let k = 0; k + 1 < poles.length; k++) {
     const a = poles[k], b = poles[k + 1];
     const d = Math.hypot(a.x - b.x, a.z - b.z);
-    if (d > 22) continue;
-    // a couple of slack cable-TV / broadband lines with more sag than the power lines
-    for (let w = 0; w < 2; w++) {
-      if (prand() > 0.55) continue;
-      const off = (prand() - 0.5) * 0.6, sag = 1.2 + prand() * 1.4, y0 = 6.6 + prand() * 0.8;
-      for (let q = 0; q < 10; q++) {
-        const t0 = q / 10, t1 = (q + 1) / 10;
-        const P = (t) => [a.x + (b.x - a.x) * t + (a.ry ? 0 : off), y0 - sag * 4 * t * (1 - t), a.z + (b.z - a.z) * t + (a.ry ? off : 0)];
-        cable.push(...P(t0), ...P(t1));
-      }
-    }
+    if (d > 34) continue;   // (the cables themselves are strung in world.js)
     if (prand() < 0.3) for (let n = 0; n < 1 + Math.floor(prand() * 3); n++) {
       const t = 0.2 + prand() * 0.6;
-      crow(a.x + (b.x - a.x) * t, 8.3 - 0.7 * 4 * t * (1 - t) - 0.05, a.z + (b.z - a.z) * t + (prand() - 0.5) * 0.2, a.ry ? 0 : Math.PI / 2 + (prand() < 0.5 ? Math.PI : 0));
+      crow(a.x + (b.x - a.x) * t, 8.8 - 0.4 * 4 * t * (1 - t) - 0.02, a.z + (b.z - a.z) * t + (prand() - 0.5) * 0.2, a.ry ? 0 : Math.PI / 2 + (prand() < 0.5 ? Math.PI : 0));
     }
   }
   for (const p of poles) {

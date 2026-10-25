@@ -3,8 +3,9 @@
 
 export const N = 8;              // blocks per side
 export const B = 60;             // road-centre to road-centre (m)
-export const ROAD_HALF = 5;      // carriageway half width
-export const LANE = 2.5;         // lane centre offset from road centre
+export const ROAD_HALF = 3.5;    // carriageway half width: a narrow Kochi town road, two tight lanes
+export const LANE = 1.75;        // lane centre offset from road centre
+export const KERB = 5;           // kerb line: asphalt, then a broken gravel shoulder and an open drain, then the kerb
 export const WALK_IN = 8;        // inner edge of the footpath, from road centre
 export const HALF = (N * B) / 2;
 export const BOUND = HALF + 26;  // invisible wall

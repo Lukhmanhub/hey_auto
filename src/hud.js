@@ -9,7 +9,7 @@ import iMoon from 'lucide-static/icons/moon.svg?raw';
 import iCloud from 'lucide-static/icons/cloud.svg?raw';
 import iRain from 'lucide-static/icons/cloud-rain.svg?raw';
 import { formatClock } from './daycycle.js';
-import { N, B, BOUND, ROAD_HALF, CANAL_ROW, LANDMARKS, ONE_WAY_ROWS, ONE_WAY_COLS, SPEED_LIMIT, gx, blockKind } from './config.js';
+import { N, B, BOUND, KERB as ROAD_HALF, CANAL_ROW, LANDMARKS, ONE_WAY_ROWS, ONE_WAY_COLS, SPEED_LIMIT, gx, blockKind } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const PX = 1.2;                 // static minimap pixels per metre
