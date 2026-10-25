@@ -1,3 +1,4 @@
+import { viewSize } from './view.js';
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import {
@@ -39,7 +40,7 @@ export class Post {
     this.renderer = renderer; this.scene = scene; this.camera = camera;
     this.mobile = mobile; this.level = level; this.quality = 'high';
     renderer.toneMapping = THREE.NoToneMapping;       // tone mapping happens in the effect chain
-    const w = window.innerWidth, h = window.innerHeight;
+    const [w, h] = viewSize();
     this.composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: level ? 0 : Math.min(mobile ? 2 : 4, renderer.capabilities.maxSamples) });
     this.composer.addPass(new RenderPass(scene, camera));
 
@@ -72,7 +73,7 @@ export class Post {
     this.bloom.blendMode.opacity.value = q === 'low' ? 0 : 1;
     this.grain.blendMode.opacity.value = q === 'low' ? 0 : 0.12;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'low' || this.level >= 3 ? 1 : this.maxDpr ?? 1.5));
-    this.composer.setSize(window.innerWidth, window.innerHeight);
+    this.composer.setSize(...viewSize());
     if (sun) { const s = this.level >= 3 ? 512 : q === 'low' || (this.mobile && (q !== 'high' || safe)) ? 1024 : 2048; if (sun.shadow.mapSize.x !== s) { sun.shadow.mapSize.set(s, s); sun.shadow.map?.dispose(); sun.shadow.map = null; } }
   }
   setLevel(level) { this.level = level; this.setQuality(this.quality, this.sun); }

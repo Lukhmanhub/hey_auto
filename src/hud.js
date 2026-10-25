@@ -1,3 +1,4 @@
+import { viewSize } from './view.js';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import iCamera from 'lucide-static/icons/camera.svg?raw';
@@ -510,7 +511,7 @@ export class Hud {
   removeBubble(b) { b.el.remove(); this.bubbles.splice(this.bubbles.indexOf(b), 1); }
 
   updateBubbles(dt) {
-    const W = window.innerWidth, H = window.innerHeight;
+    const [W, H] = viewSize();
     for (const b of [...this.bubbles]) {
       b.t -= dt;
       if (b.t <= 0) { this.removeBubble(b); continue; }

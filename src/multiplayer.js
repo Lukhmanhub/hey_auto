@@ -6,6 +6,7 @@
 // No peer-to-peer: it works on any network, the stand stays open while the host switches apps to share
 // the link, a driver who loses signal gets their spot back, and if the host leaves the next driver hosts.
 // Voice goes through the room too: 12 kHz μ-law chunks, sent only to the drivers in earshot.
+import { viewSize } from './view.js';
 import * as THREE from 'three';
 import { autoGeometry, vcMat, makePerson, poseSeated } from './models.js';
 import { vehicleLights } from './traffic.js';
@@ -303,7 +304,7 @@ export class Multiplayer {
     }
     const now = performance.now();
     let bump = null;
-    const W = window.innerWidth, H = window.innerHeight;
+    const [W, H] = viewSize();
     for (const r of this.remotes.values()) {
       if (!r.seen) continue;
       // dead-reckon a little past the last update, then ease towards it

@@ -18,6 +18,7 @@ import { TOUCH, touch, initTouch, releaseTouch, goFullscreen } from './touch.js'
 import * as stats from './analytics.js';
 import { Multiplayer, HEAR, micHelp } from './multiplayer.js';
 import { initLobby } from './lobby.js';
+import { viewSize } from './view.js';
 import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
 const canvas = document.getElementById('game');
@@ -26,7 +27,9 @@ const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: 'high-performance', ...(TOUCH && { alpha: false }) });
 stats.initAnalytics({ renderer, getStats: () => { try { return { rides: missions.trips, net: missions.cash, fines: missions.fines }; } catch { return {}; } } });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5));   // phones: fewer pixels, steadier frames
-renderer.setSize(window.innerWidth, window.innerHeight);
+// the canvas's on-screen size is CSS (always the full screen); only its pixel count follows viewSize,
+// so a wrong size reading can never leave part of the screen uncovered
+renderer.setSize(...viewSize(), false);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -106,7 +109,7 @@ function checkGfx() {
 }
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 3000);
+const camera = new THREE.PerspectiveCamera(62, viewSize()[0] / viewSize()[1], 0.1, 3000);
 
 // ---------- Sky, fog, light ----------
 // warm, humid haze by day; grey-green murk in the monsoon
@@ -980,18 +983,25 @@ function frame(now) {
   }
   updateEnv(running && (!paused || mp.active) ? dt : 0);   // a stand shares one clock: it doesn't stop for your chaya break
   if (!paused) updateHumans(dt, camera);
+  if (++fitTick % 30 === 0) fitView();   // phones don't always fire resize (toolbars, zoom, rotation)
   post.render(dt);
   checkGfx();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+let sizeW = 0, sizeH = 0, fitTick = 0;
+function fitView() {
+  const [w, h] = viewSize();
+  if (w === sizeW && h === sizeH) return;
+  sizeW = w; sizeH = h;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  post.setSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h, false);
+  post.setSize(w, h);
+}
+window.addEventListener('resize', fitView);
+fitView();
 
 // ---------- Dev tuning panel: open the game with ?dev ----------
 if (new URLSearchParams(location.search).has('dev')) {
