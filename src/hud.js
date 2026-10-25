@@ -143,8 +143,20 @@ export class Hud {
       if (dd > rim) { sx = C + (dx / dd) * rim; sy = C + (dy / dd) * rim; }
       x.save(); x.translate(sx, sy); x.rotate(phi - o.h + Math.PI);
       x.fillStyle = o.color; x.strokeStyle = '#111'; x.lineWidth = 2;
+      x.globalAlpha = o.away ? 0.45 : 1;
       x.beginPath(); x.moveTo(0, -8); x.lineTo(6, 6); x.lineTo(0, 3); x.lineTo(-6, 6); x.closePath(); x.fill(); x.stroke();
       x.restore();
+      // their name, kept inside the dial
+      if (o.name) {
+        x.save();
+        x.font = '800 11px "Baloo Chettan 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+        const w = x.measureText(o.name).width / 2 + 5;
+        const ly = sy + (sy > C + R - 30 ? -15 : 15), lx = Math.max(C - R + w + 6, Math.min(C + R - w - 6, sx));
+        x.globalAlpha = o.away ? 0.5 : 1;
+        x.fillStyle = 'rgba(10,11,9,.82)'; x.beginPath(); x.roundRect(lx - w, ly - 7.5, w * 2, 15, 7.5); x.fill();
+        x.fillStyle = o.color; x.fillText(o.name, lx, ly + 1);
+        x.restore();
+      }
     }
     // landmark labels: only when the whole label fits inside the circle
     x.font = '700 12px "Baloo Chettan 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';

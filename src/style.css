@@ -377,6 +377,23 @@ html:not(.mp) .mp-only { display: none !important; }
 .mp-tag.far .mic { background: rgba(255, 255, 255, 0.4); animation: none; }
 @keyframes talkping { 70% { box-shadow: 0 0 0 7px rgba(47, 211, 108, 0); } 100% { box-shadow: 0 0 0 0 rgba(47, 211, 108, 0); } }
 .bub.mp { border-top-color: var(--c, var(--auto)); }
+.near-hint {
+  position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 8px 16px 6px; border-radius: 99px; background: rgba(12, 13, 11, 0.8); color: var(--text); font-size: 15px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: nearIn 0.35s cubic-bezier(0.2, 1, 0.3, 1);
+}
+.near-hint i { width: 10px; height: 10px; border-radius: 50%; flex: none; margin-top: -2px; }
+.near-hint i.on { background: #2fd36c; animation: talkping 1s infinite; }
+.near-hint b { font-weight: 800; }
+@keyframes nearIn { from { opacity: 0; transform: translate(-50%, 10px); } }
+#hud:not([data-state='cruise']) .near-hint { bottom: 196px; }
+.lb-list li.new { animation: lbIn 0.5s cubic-bezier(0.2, 1, 0.3, 1); }
+@keyframes lbIn { from { opacity: 0; transform: translateX(-14px); background: rgba(247, 198, 0, 0.35); } }
+.lb-list li.away { opacity: 0.55; }
+.lb-peek { margin: -4px 0 14px; padding: 10px 14px 8px; border-radius: 14px; background: rgba(79, 195, 247, 0.1); border: 1px solid rgba(79, 195, 247, 0.35); font-size: 15px; }
+.lb-peek:empty { display: none; }
+.lb-wait::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.4s steps(4) infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 .chatbox { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); display: flex; gap: 8px; width: min(460px, 80vw); pointer-events: auto; }
 .chatbox input { flex: 1; min-width: 0; font: 700 17px var(--ui); color: var(--ink); background: var(--paper); border: 0; border-radius: 99px; padding: 11px 18px 8px; outline: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
 .chatbox button { border: 0; border-radius: 99px; padding: 0 18px; font: 800 15px var(--ui); background: var(--auto); color: var(--ink); cursor: pointer; }
@@ -536,7 +553,7 @@ html.touch.mp .t-mp { display: block; }
 #touch .t-talk.on { background: rgba(47, 211, 108, 0.92); color: var(--ink); box-shadow: 0 0 22px rgba(47, 211, 108, 0.5); }
 #touch .t-chat { left: calc(102px + var(--sl)); bottom: calc(108px + var(--sb)); width: 52px; height: 52px; border-radius: 16px; }
 #touch .t-chat svg { width: 20px; height: 20px; }
-html.touch .stand { --z: 0.6; top: auto; right: auto; bottom: calc((170px + var(--sb)) / 0.6); left: calc((14px + var(--sl)) / 0.6); width: 240px; padding: 6px 9px; }
+html.touch .stand { --z: 0.6; top: auto; right: auto; bottom: calc((202px + var(--sb)) / 0.6); left: calc((14px + var(--sl)) / 0.6); width: 240px; padding: 6px 9px; }
 html.touch .stand-hint { display: none; }
 html.touch .mp-tag { font-size: 11px; padding: 3px 8px 1px 6px; }
 html.touch .mp-tag small { font-size: 10px; }
@@ -549,3 +566,6 @@ html.touch .lb-box p { font-size: 13px; }
 html.touch .lb-code b { font-size: 30px; }
 html.touch .lb-list li { padding: 6px 10px 4px; font-size: 14px; }
 html.touch .mp-open { padding: 10px 0 7px; font-size: 16px; margin-top: 8px; }
+html.touch #hud .near-hint { left: calc(14px + var(--sl)); bottom: calc(168px + var(--sb)); transform: none; font-size: 12px; padding: 5px 12px 4px; animation: none; }
+#touch .t-talk.ready { animation: talkReady 1.2s ease-in-out infinite; }
+@keyframes talkReady { 50% { box-shadow: 0 0 0 4px rgba(47, 211, 108, 0.55), 0 0 18px rgba(47, 211, 108, 0.45); } }

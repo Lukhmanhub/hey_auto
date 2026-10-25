@@ -1,0 +1,12 @@
+# Hey Auto · auto stand room server (multiplayer). Deploy: npx wrangler deploy (from this folder).
+name = "hey-auto-stand"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[durable_objects.bindings]]
+name = "STAND"
+class_name = "Stand"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Stand"]

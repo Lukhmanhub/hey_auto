@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:cf": "HEYAUTO_BASE=${HEYAUTO_BASE:-https://hey-auto.pages.dev/heyauto/} vite build && node scripts/cf-pack.mjs",
-    "deploy:cf": "npm run build:cf && npx -y wrangler@4 pages deploy cf --project-name hey-auto --branch main"
+    "deploy:cf": "npm run build:cf && npx -y wrangler@4 pages deploy cf --project-name hey-auto --branch main",
+    "deploy:stand": "cd stand-server && npx -y wrangler@4 deploy"
   },
   "dependencies": {
     "dseg": "^0.46.0",
@@ -18,7 +19,6 @@
     "howler": "^2.2.4",
     "lucide-static": "^0.460.0",
     "n8ao": "^1.9.4",
-    "peerjs": "^1.5.5",
     "postprocessing": "^6.36.4",
     "three": "^0.170.0"
   },

@@ -501,7 +501,6 @@ function startShift(env = {}) {
 const lobby = initLobby({ mp, track: stats.track, onShift: startShift, startEnv: () => ({ day: rollDay(), hour: gameHour, rain: false, cloud: 0 }) });
 lobby.ready();
 const envNow = () => ({ day: today, hour: Math.round(gameHour * 1000) / 1000, rain: raining, cloud: Math.round(weather.cloud * 100) / 100 });
-mp.envNow = envNow;
 const guest = () => mp.active && !mp.host;
 function toggleRain(quiet) {
   if (guest()) { mp.send({ t: 'req', k: 'rain' }); hud.toast('info', 'Asked the stand host', 'Weather is shared, the host’s game changes it for everyone'); return; }
@@ -526,11 +525,17 @@ mp.on('req', (k, who) => {
   if (k === 'rain') setRain(!raining);
   if (k === 'hour') { gameHour = (gameHour + 1) % 24; hud.toast('info', `${who?.name ?? 'A driver'} skipped an hour`, `${formatClock(gameHour).text} ${formatClock(gameHour).ap}`); }
 });
-mp.on('joined', (m) => { if (running) hud.toast('info', `${m.name} joined the stand`, 'Their auto has a coloured roof flag'); sound.ding?.(); });
+mp.on('joined', (m) => { if (running) { hud.toast('info', `${m.name} joined the stand`, 'Find them on the map: the coloured arrow with their name'); sound.ding?.(); } });
 mp.on('left', (m) => { if (running) hud.toast('warn', `${m.name} left the stand`); });
 mp.on('closed', () => {
   document.documentElement.classList.remove('mp');
-  if (running) hud.toast('warn', 'The stand closed', 'The host left, you’re driving solo now');
+  if (running) hud.toast('warn', 'Lost the stand', 'No connection for a while, you’re driving solo now');
+});
+mp.on('host', () => { if (running) hud.toast('info', 'You’re the stand host now', 'The clock and the weather follow your game'); });
+mp.on('status', (st) => {
+  if (!running) return;
+  if (st === 'reconnecting') hud.toast('warn', 'Signal lost', 'Reconnecting to the stand…');
+  if (st === 'online' && mp.started) hud.toast('info', 'Back on the stand');
 });
 mp.on('mic', (st) => {
   if (st === 'denied') hud.toast('warn', 'Microphone blocked', 'Allow the mic for this site to talk to other drivers');
@@ -607,13 +612,36 @@ function drawStand() {
     : mp.roster.length < 2 ? `Code ${mp.code} · waiting for friends` : `Hold V to talk · Enter to chat · ${near} nearby`;
 }
 let envT = 0;
+// the moment a friend is in earshot, say so, and how to talk to them
+const nearEl = document.getElementById('near-hint');
+let nearKey = '';
+function nearHint() {
+  const n = mp.nearest(), inRange = n && n.d < HEAR;
+  const talkKey = TOUCH ? 'hold TALK' : 'hold V';
+  let key = '', html = '';
+  if (mp.talking) {
+    const near = mp.nearby();
+    key = `on${near.length}`;
+    html = near.length ? `<i class="on"></i><b>On air</b> · ${near.map((r) => esc(mp.member(r.id)?.name ?? '')).join(', ')} can hear you` : '<i class="on"></i><b>On air</b> · nobody close enough to hear';
+  } else if (inRange) {
+    key = `near${n.r.id}`;
+    html = `<i style="background:${n.m?.color}"></i><b>${esc(n.m?.name ?? 'A friend')}</b> is nearby · ${talkKey} to talk`;
+  }
+  if (key === nearKey) return;
+  nearKey = key;
+  nearEl.hidden = !key;
+  nearEl.innerHTML = html;
+  document.querySelector('[data-mp="talk"]')?.classList.toggle('ready', !!inRange && !mp.talking);
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 function updateStand(dt) {
   if (!mp.active) { if (!standEl.hidden) standEl.hidden = true; hud.others = null; return; }
   const bump = mp.update(dt, player, camera, { riding: missions.state === 'riding', net: missions.cash, rides: missions.trips }, !paused);
   if (bump) { sound.crash(bump.impact); haptic(Math.min(1, bump.impact / 8), 160); }
-  hud.others = [...mp.remotes.values()].filter((r) => r.seen && r.root.visible).map((r) => ({ x: r.pos.x, z: r.pos.z, h: r.heading, color: mp.member(r.id)?.color ?? '#fff' }));
+  hud.others = [...mp.remotes.values()].filter((r) => r.seen).map((r) => { const m = mp.member(r.id); return { x: r.pos.x, z: r.pos.z, h: r.heading, color: m?.color ?? '#fff', name: m?.name ?? '', away: !!m?.away }; });
+  nearHint();
   if ((standT -= dt) <= 0) { standT = 0.5; drawStand(); }
-  if (mp.host && (envT -= dt) <= 0) { envT = 1; mp.send({ t: 'env', ...envNow() }); }
+  if (mp.host && (envT -= dt) <= 0) { envT = 1; mp.send({ t: 'env', env: envNow() }); }
 }
 
 // ---------- Smoke, dust and spray ----------
