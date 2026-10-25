@@ -24,6 +24,5 @@ writeFileSync('cf/_headers', `/*
 `);
 writeFileSync('cf/_redirects', `/ /heyauto/ 302
 /heyauto /heyauto/ 301
-/heyauto/analytics /heyauto/analytics.html 200
 `);
 console.log('cf/ ready');
