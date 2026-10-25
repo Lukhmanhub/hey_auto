@@ -177,6 +177,11 @@ export class Radio {
       this.station.start?.(this, this.nextT);
     }, 420);
   }
+  // X: switch the radio off completely (stream closed, music stopped), X again comes back to the same station
+  power() {
+    if (this.idx >= 0) { this.lastIdx = this.idx; this.tune(-1); }
+    else this.tune(Math.min(this.lastIdx ?? 0, this.stations.length - 1));
+  }
   next() { this.tune(this.idx + 1 >= this.stations.length ? -1 : this.idx + 1); }
   updateMix() {}
   duck() {}

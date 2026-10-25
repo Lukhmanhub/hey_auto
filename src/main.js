@@ -290,6 +290,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyH') actions.horn(true);
   if (e.code === 'KeyC') actions.camera();
   if (e.code === 'KeyQ') actions.radio(e.shiftKey);
+  if (e.code === 'KeyX') { sound.radio?.power(); hud.openRadio(); }
   if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
     const r = sound.radio; if (!r) return;
     r.setLevel(clamp(r.level + (e.code === 'BracketRight' ? 0.08 : -0.08), 0, 0.9));
