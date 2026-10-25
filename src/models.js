@@ -128,7 +128,7 @@ export function busDecals(name, cols, gov) {
   for (const s of [-1, 1]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.62), side); m.position.set(s * 1.265, 1.55, 0.6); m.rotation.y = s * Math.PI / 2; g.add(m); }
   const board = decal(`bf${name}${gov}`, (x, w, h) => {
     x.fillStyle = '#111'; x.fillRect(0, 0, w, h); x.fillStyle = gov ? '#ffcf3a' : '#ff6b3a'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.font = `700 ${h * 0.6}px "Anek Malayalam", sans-serif`; x.fillText(gov ? 'തെക്കുംപുറം — എറണാകുളം' : 'തെക്കുംപുറം · ഫാസ്റ്റ്', w / 2, h * 0.55, w - 16);
+    x.font = `700 ${h * 0.6}px "Anek Malayalam", sans-serif`; x.fillText(gov ? 'വൈറ്റില — ആലുവ' : 'കലൂർ · ഫോർട്ട് കൊച്ചി', w / 2, h * 0.55, w - 16);
   }, 512, 96);
   const fb = new THREE.Mesh(new THREE.PlaneGeometry(1.85, 0.3), board); fb.position.set(0, 2.88, 5.035); g.add(fb);
   return g;
@@ -188,13 +188,24 @@ export function makePlayerAuto() {
   const driver = db.mesh(vcMat);     // box driver: only used if the rigged characters fail to load
   body.add(driver);
 
+  // amber indicators at the four corners (side: +1 = the auto's left, −1 = its right)
+  const indicators = {};
+  for (const side of [1, -1]) {
+    const mat = new THREE.MeshStandardMaterial({ color: '#7a4a00', emissive: '#ffa000', emissiveIntensity: 0, roughness: 0.4 });
+    indicators[side > 0 ? 'left' : 'right'] = mat;
+    for (const [x, y, z, w, d] of [[side * 0.6, 0.78, -1.36, 0.12, 0.05], [side * 0.5, 1.02, 1.47, 0.1, 0.05]]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), mat);
+      m.position.set(x, y, z); body.add(m);
+    }
+  }
+
   // a single, slightly yellow halogen lamp: soft-edged cone, falls off over ~30 m
   const headlight = new THREE.SpotLight('#ffe2a8', 0, 32, 0.62, 0.85, 1.6);
   headlight.position.set(0, 1.08, 1.5);
   headlight.target.position.set(0, 0, 12);
   body.add(headlight, headlight.target);
 
-  return { root, body, frontPivot, wheels: [fw, rl, rr], driver, glass, headlight, seat: new THREE.Vector3(0.22, 0.2, -0.66), seatY: 0.62 };
+  return { root, body, frontPivot, wheels: [fw, rl, rr], driver, glass, headlight, indicators, seat: new THREE.Vector3(0.22, 0.2, -0.66), seatY: 0.62 };
 }
 
 // ---------- Other vehicles ----------
@@ -359,10 +370,12 @@ export function poseSeated(p) {
 export function palmGeometry(variant = 0) {
   return cached(`palm${variant}`, () => {
     const b = new Bucket();
-    const lean = 0.06 + variant * 0.05;
+    // variant 3 is the tall one: eight trunk segments bending into a long curve, tall enough to show over roofs
+    const tall = variant === 3, segs = tall ? 8 : 6;
+    const lean = tall ? 0.05 : 0.06 + variant * 0.05;
     let x = 0, y = 0;
-    for (let k = 0; k < 6; k++) {
-      const nx = x + lean * (k + 1) * 0.6;
+    for (let k = 0; k < segs; k++) {
+      const nx = x + lean * (k + 1) * (tall ? 0.45 + k * 0.08 : 0.6);
       const ny = y + 1.65;
       b.add(Cyl(0.15 - k * 0.008, 0.2 - k * 0.008, 1.72, 7), k % 2 ? '#7b6650' : '#6e5a46', (x + nx) / 2, (y + ny) / 2, 0, 0, 0, -Math.atan2(nx - x, 1.65));
       x = nx; y = ny;

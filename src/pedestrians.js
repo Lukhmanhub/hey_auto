@@ -22,6 +22,8 @@ export class Pedestrians {
         p.phase = r() * 10;
         p.fallen = 0;
         p.umbrellaLikes = r() < 0.7;
+        p.sunUmbrella = r() < 0.12;   // plenty of people walk under a black umbrella in the sun too
+        if (p.sunUmbrella && p.kind !== 'fisherwoman') p.umbrella.visible = true;
         p.group.position.y = 0.16;
         scene.add(p.group);
         this.list.push(p);
@@ -59,7 +61,7 @@ export class Pedestrians {
     if (!p.fallen) p.group.rotation.y = Math.atan2(p.fx, p.fz);
   }
 
-  setRain(on) { for (const p of this.list) p.umbrella.visible = on && (p.umbrellaLikes || p.kind === 'kid') && p.kind !== 'fisherwoman'; this.setDay(this.day ?? 'normal', on); this.raining = on; }
+  setRain(on) { for (const p of this.list) p.umbrella.visible = (on ? p.umbrellaLikes || p.kind === 'kid' : p.sunUmbrella) && p.kind !== 'fisherwoman'; this.setDay(this.day ?? 'normal', on); this.raining = on; }
 
   update(dt, player, events) {
     const ps = Math.abs(player.speed);

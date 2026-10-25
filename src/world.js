@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  N, B, HALF, BOUND, ROAD_HALF, LANE, KERB, CANAL_ROW, SPEED_LIMIT, LANDMARKS, SIGNALS, ONE_WAY_ROWS, ONE_WAY_COLS,
+  N, B, HALF, BOUND, ROAD_HALF, LANE, KERB, METRO_LINE, CANAL_ROW, SPEED_LIMIT, LANDMARKS, SIGNALS, ONE_WAY_ROWS, ONE_WAY_COLS,
   TOWN, TOWN_ML, gx, blockKind, hasFootpath, isWaterBlock, mulberry32, pick,
 } from './config.js';
 import { Bucket, wallBox, noiseTexture, signTexture, Colliders, FONT_ML, FONT_PAINT } from './util.js';
@@ -37,7 +37,7 @@ const SHOP_SIGNS = [
 
 // Hand-painted wall adverts (fictional businesses): Malayalam, English, small print, background, paint colour
 const WALL_ADS = [
-  ['അമ്പാടി സിൽക്സ്', 'AMBADI SILKS', 'Wedding sarees · Kasavu · Thekkumpuram', '#6a1b7a', '#ffd54f'],
+  ['അമ്പാടി സിൽക്സ്', 'AMBADI SILKS', 'Wedding sarees · Kasavu · Ernakulam', '#6a1b7a', '#ffd54f'],
   ['ശ്രീലക്ഷ്മി ജ്വല്ലേഴ്സ്', 'SREELAKSHMI JEWELLERS', '916 hallmark gold · Near KRTC', '#8e1b1b', '#ffe082'],
   ['പരിമളം അഗർബത്തി', 'PARIMALAM AGARBATHI', 'For every pooja room', '#1f5e2a', '#fff59d'],
   ['ഡോ. മേരീസ് ഡെന്റൽ ക്ലിനിക്', "DR. MARY'S DENTAL CLINIC", 'Ph 0484 2 345678 · Sunday closed', '#0d47a1', '#ffffff'],
@@ -142,9 +142,9 @@ export function buildWorld(scene) {
       else roofs.box(len + 1, 0.18, slab, color, cx, top + Math.tan(pitch) * half / 2, cz + s * half / 2, s * pitch, 0, 0);
     }
   };
-  const palm = (x, z, s = 0.8 + rand() * 0.45, collide = true) => {
+  const palm = (x, z, s = 0.8 + rand() * 0.45, collide = true, v = Math.floor(rand() * 3)) => {
     if (onRoad(x, z, 1.2)) return;          // never plant a tree on the carriageway
-    palms.push({ x, z, s, ry: rand() * Math.PI * 2, v: Math.floor(rand() * 3) });
+    palms.push({ x, z, s, ry: rand() * Math.PI * 2, v });
     if (collide) col.addCentered(x, z, 0.5, 0.5, 'tree');
   };
   const insideAny = (x, z, list) => list.some((b) => x > b[0] - 1 && x < b[2] + 1 && z > b[1] - 1 && z < b[3] + 1);
@@ -336,7 +336,7 @@ export function buildWorld(scene) {
     for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) {
       if (alley && c === 1) continue;
       const x = ox + 8 + c * lot + 1.5 + rand() * (lot - 3), z = oz + 8 + r * lot + 1.5 + rand() * (lot - 3);
-      if (!insideAny(x, z, built) && rand() < 0.8) palm(x, z);
+      if (!insideAny(x, z, built) && rand() < 0.8) palm(x, z, 1.0 + rand() * 0.35, true, rand() < 0.7 ? 3 : Math.floor(rand() * 3));
     }
     if (alley) {
       const ax = ox + B / 2;
@@ -655,7 +655,7 @@ export function buildWorld(scene) {
       for (const s of [-1, 1]) { solid.box(1, 3.6, 1, '#efe6d2', cx + s * 4.6, 1.8, loz); col.addCentered(cx + s * 4.6, loz, 1, 1); }
       solid.box(10.6, 0.6, 3, '#efe6d2', cx, 3.9, loz);
       roofHip(cx, 4.2, loz, 12, 4.6, 2.2, '#ead0bd');
-      addSign('temple', () => signTexture('ശ്രീകൃഷ്ണ ക്ഷേത്രം', 'Sree Krishna Temple', '#7a1f12', '#ffd54f'), 7.5, 1.4, cx, 3.0, loz - 1.55, 0, -1);
+      addSign('temple', () => signTexture('എറണാകുളത്തപ്പൻ ക്ഷേത്രം', 'Ernakulathappan Temple', '#7a1f12', '#ffd54f'), 7.5, 1.4, cx, 3.0, loz - 1.55, 0, -1);
       // sreekovil
       const sz = cz + 5;
       solid.box(15, 0.9, 15, '#8e8b84', cx, 0.45, sz);
@@ -701,7 +701,7 @@ export function buildWorld(scene) {
       roofHip(kx, 3, kz, 3.2, 3.2, 1, '#ead0bd');
       solid.box(0.2, 1.4, 0.2, '#f5d36b', kx, 4.4, kz); solid.box(0.8, 0.2, 0.2, '#f5d36b', kx, 4.7, kz);
       col.addCentered(kx, kz, 2.6, 2.6, 'building');
-      addSign('church', () => signTexture('സെന്റ് മേരീസ് പള്ളി', "St. Mary's Church", '#ffffff', '#1a3d6e'), 6, 1.2, cx + 13, 2.2, oz + 9.2, 0, -1);
+      addSign('church', () => signTexture('സെന്റ് മേരീസ് ബസിലിക്ക', "St. Mary's Basilica", '#ffffff', '#1a3d6e'), 6, 1.2, cx + 13, 2.2, oz + 9.2, 0, -1);
       for (const s of [-2.8, 2.8]) solid.box(0.15, 1.6, 0.15, '#444', cx + 13 + s, 0.8, oz + 9.3);
     },
     mosque(ox, oz, cx, cz) {
@@ -721,7 +721,7 @@ export function buildWorld(scene) {
       }
       for (let k = -2; k <= 2; k++) solid.box(1.6, 3.6, 0.2, '#2c3e36', cx + k * 3.2, 1.8, cz - 5.05);
       col.addCentered(cx, cz + 3, 18, 16, 'building');
-      addSign('mosque', () => signTexture('ജുമാ മസ്ജിദ്', 'Juma Masjid', '#1f7a46', '#ffffff'), 7, 1.3, cx, 5.6, cz - 5.1, 0, -1);
+      addSign('mosque', () => signTexture('കലൂർ ജുമാ മസ്ജിദ്', 'Kaloor Juma Masjid', '#1f7a46', '#ffffff'), 7, 1.3, cx, 5.6, cz - 5.1, 0, -1);
     },
     busstand(ox, oz, cx, cz) {
       flat.box(B - 16, 0.04, B - 16, '#8f8b84', cx, 0.03, cz);
@@ -733,7 +733,7 @@ export function buildWorld(scene) {
         col.addCentered(cx + x, sz + dz, 0.5, 0.5);
       }
       for (let x = -12; x <= 12; x += 6) solid.box(4, 0.45, 0.8, '#5d6d7e', cx + x, 0.45, sz + 2.5);
-      addSign('ksrtc', () => signTexture('കെ.ആർ.ടി.സി ബസ് സ്റ്റാൻഡ്', 'KRTC Bus Stand', '#b71c1c', '#ffffff', 768, 160), 14, 2.2, cx, 6.2, sz - 4.25, 0, -1);
+      addSign('ksrtc', () => signTexture('വൈറ്റില മൊബിലിറ്റി ഹബ്', 'Vyttila Mobility Hub · KSRTC', '#b71c1c', '#ffffff', 768, 160), 14, 2.2, cx, 6.2, sz - 4.25, 0, -1);
       solid.box(14, 2.3, 0.15, '#b71c1c', cx, 6.2, sz - 4.15);
       const bg = busGeometry('#b71c1c', '#f2c200', true);
       for (const x of [-10, 0, 10]) {
@@ -748,7 +748,7 @@ export function buildWorld(scene) {
       walls.add(wallBox(12, 9, 10), '#efe7d6', cx - 12, 4.5, cz - 5.5);
       solid.box(12.4, 0.5, 10.4, '#d6cfc2', cx - 12, 9.2, cz - 5.5);
       col.addCentered(cx, cz + 7, 36, 15, 'building'); col.addCentered(cx - 12, cz - 5.5, 12, 10, 'building');
-      addSign('hospital', () => signTexture('മെഡിക്കൽ കോളേജ്', 'Medical College Hospital', '#ffffff', '#c62828', 768, 160), 16, 3.2, cx + 2, 12.5, cz - 0.56, 0, -1);
+      addSign('hospital', () => signTexture('ജനറൽ ആശുപത്രി, എറണാകുളം', 'General Hospital, Ernakulam', '#ffffff', '#c62828', 768, 160), 16, 3.2, cx + 2, 12.5, cz - 0.56, 0, -1);
       addSign('redcross', () => { const t = signTexture('', '', '#ffffff', '#fff', 128, 128); const c = t.image.getContext('2d'); c.fillStyle = '#d32f2f'; c.fillRect(48, 16, 32, 96); c.fillRect(16, 48, 96, 32); t.needsUpdate = true; return t; }, 2.6, 2.6, cx + 13, 12.5, cz - 0.56, 0, -1);
       const amb = new THREE.Mesh(carGeometry('#fafafa'), vcMat); amb.position.set(cx + 8, 0, cz - 8); amb.rotation.y = Math.PI / 2; amb.castShadow = true; scene.add(amb);
       col.addCentered(cx + 8, cz - 8, 4, 1.8, 'vehicle');
@@ -779,9 +779,9 @@ export function buildWorld(scene) {
         x.fillStyle = '#f7d117'; x.fillRect(0, 0, 768, 300);
         x.strokeStyle = '#111'; x.lineWidth = 10; x.strokeRect(10, 10, 748, 280);
         x.fillStyle = '#111'; x.textAlign = 'center'; x.textBaseline = 'middle';
-        x.font = '700 64px "Noto Sans Devanagari", sans-serif'; x.fillText('थेक्कुमपुरम', 384, 70);
-        x.font = `700 64px ${FONT_ML}`; x.fillText(TOWN_ML, 384, 152);
-        x.font = '800 66px "Baloo Chettan 2", sans-serif'; x.fillText(TOWN.toUpperCase(), 384, 236);
+        x.font = '700 64px "Noto Sans Devanagari", sans-serif'; x.fillText('एर्णाकुलम जंक्शन', 384, 70);
+        x.font = `700 64px ${FONT_ML}`; x.fillText('എറണാകുളം ജംഗ്ഷൻ', 384, 152);
+        x.font = '800 66px "Baloo Chettan 2", sans-serif'; x.fillText('ERNAKULAM JN.', 384, 236);
         const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
       };
       addSign('rlyboard', board, 5.6, 2.2, cx + 14, 2.6, oz + 9.6, 0, -1);
@@ -797,7 +797,7 @@ export function buildWorld(scene) {
       solid.box(3, 1, 10, '#1d5fa8', cx + 6, -0.45, zc0 + 9);
       solid.box(2.6, 1.6, 7, '#f2f2ee', cx + 6, 0.8, zc0 + 9);
       solid.box(2.9, 0.15, 8, '#1d5fa8', cx + 6, 1.65, zc0 + 9);
-      addSign('jetty', () => signTexture('ബോട്ട് ജെട്ടി', 'Boat Jetty · Ferry', '#0d47a1', '#ffffff'), 4.4, 1.2, cx, 2.1, zc0 - 0.2, 0, -1);
+      addSign('jetty', () => signTexture('ബോട്ട് ജെട്ടി', 'Ernakulam Boat Jetty · Ferry', '#0d47a1', '#ffffff'), 4.4, 1.2, cx, 2.1, zc0 - 0.2, 0, -1);
       for (const s of [-2, 2]) solid.box(0.15, 2.1, 0.15, '#333', cx + s, 1.05, zc0 - 0.15);
     },
     toddy(ox, oz, cx, cz) {
@@ -837,7 +837,53 @@ export function buildWorld(scene) {
           col.addCentered(cx + x, mz, 3, 1.4);
         }
       }
-      addSign('fish', () => signTexture('മീൻ ചന്ത', 'Fish Market', '#0277bd', '#ffffff'), 7, 1.3, cx, 4.6, cz - 13.6, 0, -1);
+      addSign('fish', () => signTexture('ചമ്പക്കര മീൻ ചന്ത', 'Chambakkara Fish Market', '#0277bd', '#ffffff'), 7, 1.3, cx, 4.6, cz - 13.6, 0, -1);
+    },
+    // Lulu Mall: a long glass-fronted box with a car park out front, right beside the Metro
+    mall(ox, oz, cx, cz) {
+      flat.box(B - 16, 0.04, B - 16, '#8d8a84', cx, 0.03, cz);
+      const mz = cz + 5;
+      walls.add(wallBox(42, 17, 30, 4.2), '#e9e6df', cx, 8.5, mz);
+      solid.box(42.4, 0.8, 30.4, '#cfcac0', cx, 17.4, mz);
+      // glass curtain wall bands on the front
+      for (let y = 2.4; y < 16; y += 4.2) solid.box(40, 2.6, 0.3, '#5d8ca3', cx, y + 0.9, mz - 15.05);
+      solid.box(14, 0.4, 6, '#d9d6cf', cx, 4.6, mz - 18);                                        // entrance canopy
+      for (const sx of [-6.5, 6.5]) solid.box(0.4, 4.4, 0.4, '#bdb9b0', cx + sx, 2.2, mz - 20.6);
+      col.addCentered(cx, mz, 42, 30, 'building');
+      addSign('mall', () => signTexture('ലുലു മാൾ', 'LULU MALL · EDAPPALLY', '#0f5132', '#ffffff', 768, 160), 18, 3.6, cx, 13.2, mz - 15.3, 0, -1);
+      // car park: painted bays and a few parked cars
+      for (let n = -4; n <= 4; n++) flat.box(0.12, 0.02, 4.8, '#f2f2ee', cx + n * 2.8, 0.06, oz + 12);
+      for (let n = 0; n < 6; n++) {
+        const car = new THREE.Mesh(carGeometry(['#fafafa', '#b71c1c', '#1e3a5f', '#9e9e9e', '#2e2e2e', '#c9b037'][n]), vcMat);
+        car.position.set(cx - 11.2 + n * 4.2 + (n > 2 ? 1.4 : 0), 0, oz + 12); car.rotation.y = 0; car.castShadow = true; scene.add(car);
+        col.addCentered(car.position.x, car.position.z, 1.8, 4, 'vehicle');
+      }
+    },
+    // Jawaharlal Nehru Stadium, Kaloor: an oval bowl of stands with four floodlight towers
+    stadium(ox, oz, cx, cz) {
+      flat.box(B - 16, 0.04, B - 16, '#8b8f7f', cx, 0.03, cz);
+      const RX = 19.5, RZ = 16.5, SEG = 32;
+      const pitch = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshStandardMaterial({ color: '#4f8d3a', roughness: 0.95 }));
+      pitch.rotation.x = -Math.PI / 2; pitch.scale.set(RX - 5.5, RZ - 5.5, 1); pitch.position.set(cx, 0.06, cz); pitch.receiveShadow = true; scene.add(pitch);
+      for (let n = 0; n < SEG; n++) {
+        const a0 = (n / SEG) * Math.PI * 2, a1 = ((n + 1) / SEG) * Math.PI * 2, am = (a0 + a1) / 2;
+        const len = Math.hypot(RX * (Math.cos(a1) - Math.cos(a0)), RZ * (Math.sin(a1) - Math.sin(a0))) + 0.3;
+        const ry = Math.atan2(RX * (Math.cos(a1) - Math.cos(a0)), RZ * (Math.sin(a1) - Math.sin(a0)));
+        // three tiers of stands stepping up and out, then the outer wall
+        for (let t = 0; t < 3; t++) {
+          const r = 0.72 + t * 0.1, h = 3 + t * 3.4;
+          solid.box(0.6, h, len * r, t % 2 ? '#c9c2b4' : '#d8d1c3', cx + Math.cos(am) * RX * r, h / 2, cz + Math.sin(am) * RZ * r, 0, ry, 0);
+        }
+        walls.add(wallBox(0.7, 12, len, 3.2), '#e6dccb', cx + Math.cos(am) * RX, 6, cz + Math.sin(am) * RZ, 0, ry, 0);
+      }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const fx = cx + sx * (RX + 1.5), fz = cz + sz * (RZ + 1.5);
+        solid.box(0.7, 30, 0.7, '#9e9a92', fx, 15, fz);
+        solid.box(4, 3, 0.6, '#3a3a3a', fx, 30.5, fz, 0, Math.atan2(-sx, -sz), 0);
+        col.addCentered(fx, fz, 1, 1, 'pole');
+      }
+      col.addCentered(cx, cz, RX * 2, RZ * 2, 'building');
+      addSign('stadium', () => signTexture('ജവഹർലാൽ നെഹ്‌റു സ്റ്റേഡിയം', 'JLN STADIUM · KALOOR', '#0d47a1', '#ffffff', 768, 160), 14, 2.8, cx, 9, cz - RZ - 0.6, 0, -1);
     },
   };
 
@@ -909,6 +955,86 @@ export function buildWorld(scene) {
   poleMesh.castShadow = true;
   scene.add(poleMesh);
   scene.add(cableB.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), { cast: false, receive: false }));
+
+  // ---------------- Kochi Metro ----------------
+  // The viaduct runs the length of MG Road. The road is too narrow for a median, so the piers stand at
+  // the kerb and the hammerhead caps carry the U-girder deck out over the carriageway. Two 3-coach
+  // trains (white with the teal band) run up and down and pause at the two stations.
+  const metroX = gx(METRO_LINE) - 4.6;
+  const metro = { piers: new Bucket(), deck: new Bucket() };
+  const DECK_Y = 11.8, DECK_H = 1.6, DECK_W = 8.4;
+  const zEnd = HALF + 60;
+  const STATIONS = [{ z: gx(1) + 30, name: 'JLN STADIUM', ml: 'ജെ.എൽ.എൻ സ്റ്റേഡിയം' }, { z: gx(6) + 30, name: 'MG ROAD', ml: 'എം.ജി. റോഡ്' }];
+  for (let z = -zEnd + 15; z < zEnd; z += 30) {
+    // rounded pier: an octagonal column, flared at the top into the hammerhead cap
+    metro.piers.add(new THREE.CylinderGeometry(0.8, 0.85, DECK_Y - 1.3, 8), '#c4bfb4', metroX, (DECK_Y - 1.3) / 2 - (z > gx(CANAL_ROW) && z < gx(CANAL_ROW + 1) ? 0.4 : 0), z, 0, Math.PI / 8, 0, 1, 1, 0.8);
+    metro.piers.box(DECK_W - 0.6, 1.3, 2.0, '#bdb8ad', metroX, DECK_Y - 0.65, z);
+    metro.piers.box(DECK_W - 3, 0.6, 1.6, '#b3aea3', metroX, DECK_Y - 1.5, z);
+    if (Math.abs(z) < HALF + 6) col.addCentered(metroX, z, 1.7, 1.5, 'pole');
+  }
+  // deck: a long box with U-girder parapets, darker on the underside
+  metro.deck.box(DECK_W, DECK_H, zEnd * 2, '#cfcac0', metroX, DECK_Y + DECK_H / 2, 0);
+  metro.deck.box(DECK_W - 0.4, 0.05, zEnd * 2, '#8f8a80', metroX, DECK_Y - 0.02, 0);
+  for (const sx of [-1, 1]) metro.deck.box(0.35, 1.25, zEnd * 2, '#d6d1c6', metroX + sx * (DECK_W / 2 - 0.18), DECK_Y + DECK_H + 0.62, 0);
+  for (const sx of [-1.7, 1.7]) for (const r of [-0.72, 0.72]) metro.deck.box(0.08, 0.12, zEnd * 2, '#6d6a64', metroX + sx + r, DECK_Y + DECK_H + 0.06, 0);   // rails
+  // stations: wider platforms over the whole road, a curved roof, a lift and stair core down to the footpath
+  for (const st of STATIONS) {
+    const L = 52;
+    metro.deck.box(17, 1.4, L, '#d5d0c5', metroX + 1.5, DECK_Y + 0.9, st.z);
+    for (const sx of [-1, 1]) metro.deck.box(0.3, 2.6, L, '#7fa9b7', metroX + 1.5 + sx * 8.4, DECK_Y + 2.9, st.z);          // glazed sides
+    metro.deck.box(19, 0.5, L + 4, '#e8e5de', metroX + 1.5, DECK_Y + 8.2, st.z);                                            // roof
+    metro.deck.box(15, 0.9, L + 2, '#13a3a8', metroX + 1.5, DECK_Y + 8.9, st.z);                                            // teal roof crown
+    for (let dz = -L / 2 + 4; dz <= L / 2 - 4; dz += 11) for (const sx of [-1, 1]) metro.deck.box(0.35, 6.6, 0.35, '#a9a59c', metroX + 1.5 + sx * 7.8, DECK_Y + 4.9, st.z + dz);
+    metro.piers.box(3, DECK_Y, 3.4, '#d0cbc0', metroX - 2.2, DECK_Y / 2, st.z + 14);                                          // lift + stair core
+    col.addCentered(metroX - 2.2, st.z + 14, 3, 3.4, 'building');
+    for (const end of [-1, 1]) {
+      addSign(`metro${st.name}`, () => {
+        const t = signTexture(st.ml, `KOCHI METRO · ${st.name}`, '#13a3a8', '#ffffff', 768, 160);
+        return t;
+      }, 12, 2.5, metroX + 1.5, DECK_Y + 6.6, st.z + end * (L / 2 + 0.3), 0, end);
+    }
+  }
+  scene.add(metro.piers.mesh(vcMat));
+  scene.add(metro.deck.mesh(vcMat));
+  // trains
+  const trainGeo = (() => {
+    const b = new Bucket();
+    for (let c = 0; c < 3; c++) {
+      const z = (c - 1) * 21;
+      b.box(2.85, 3.3, 20.4, '#f3f3ef', 0, 1.85, z);                    // white body
+      b.box(2.87, 0.55, 20.42, '#13a3a8', 0, 0.75, z);                   // teal skirt band
+      b.box(2.88, 0.95, 18.6, '#24343c', 0, 2.25, z);                     // window band
+      b.box(2.89, 0.12, 20.44, '#13a3a8', 0, 2.85, z);                   // teal pinstripe
+      for (const dz of [-6, 0, 6]) for (const sx of [-1, 1]) b.box(0.03, 2.2, 1.5, '#9aa3a6', sx * 1.44, 1.55, z + dz);   // doors
+    }
+    for (const e of [-1, 1]) {                                         // rounded cab ends
+      b.box(2.6, 2.6, 0.9, '#13a3a8', 0, 1.9, e * 31.6);
+      b.box(2.2, 1.0, 0.2, '#1c262b', 0, 2.4, e * 32.1);
+    }
+    return b.merge();
+  })();
+  const trains = [];
+  for (const [dir, lane, z0] of [[1, 1.7, -zEnd], [-1, -1.7, 40]]) {
+    const m = new THREE.Mesh(trainGeo, vcMat);
+    m.castShadow = true;
+    m.position.set(metroX + lane, DECK_Y + DECK_H + 0.15, z0);
+    scene.add(m);
+    trains.push({ m, dir, z: z0, wait: 0, last: null });
+  }
+  animated.push((t, dt) => {
+    for (const tr of trains) {
+      if (tr.wait > 0) { tr.wait -= dt; continue; }
+      const st = STATIONS.find((s) => Math.abs(s.z - tr.z) < 0.6);
+      if (st && tr.last !== st) { tr.last = st; tr.wait = 9; continue; }
+      // ease in and out of stations
+      const near = Math.min(...STATIONS.map((s) => Math.abs(s.z - tr.z)));
+      const v = 16 * Math.min(1, 0.18 + near / 70);
+      tr.z += tr.dir * v * dt;
+      if (tr.z > zEnd) { tr.z = -zEnd; tr.last = null; }
+      if (tr.z < -zEnd) { tr.z = zEnd; tr.last = null; }
+      tr.m.position.z = tr.z;
+    }
+  });
 
   // ---------------- Junction flex boards ----------------
   for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
@@ -1120,14 +1246,7 @@ export function buildWorld(scene) {
   col.add(-BOUND - 10, -BOUND, -BOUND, BOUND);
   col.add(BOUND, -BOUND, BOUND + 10, BOUND);
   // Western Ghats on the horizon
-  const hillB = new Bucket();
-  for (let n = 0; n < 46; n++) {
-    const a = (n / 46) * Math.PI * 2 + rand() * 0.1, r = 700 + rand() * 260;
-    const h = 60 + rand() * 120;
-    hillB.add(new THREE.ConeGeometry(110 + rand() * 120, h, 7), rand() < 0.5 ? '#3f6b3a' : '#4d7a45', Math.cos(a) * r, h / 2 - 4, Math.sin(a) * r, 0, rand() * 3, 0);
-  }
-  const hills = new THREE.Mesh(hillB.merge(), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
-  scene.add(hills);
+  // (no hills: Kochi is flat coastal land; the distant skyline below is the horizon now)
 
   // ---------------- Street life & props ----------------
   const props = buildProps({ scene, solid, lat, col, addSign, canvasTex, prand, shops, lmSpots, signals, alleys, poles, zc0, zc1, roofHip });
@@ -1186,13 +1305,100 @@ export function buildWorld(scene) {
     return m;
   };
   const palmMat = swayMat(10, 0.9), bananaMat = swayMat(2.4, 0.18);
-  for (let v = 0; v < 3; v++) {
+  for (let v = 0; v < 4; v++) {
     const list = palms.filter((p) => p.v === v);
     const im = new THREE.InstancedMesh(palmGeometry(v), palmMat, list.length);
     list.forEach((p, n) => { tmp.position.set(p.x, 0, p.z); tmp.rotation.set(0, p.ry, 0); tmp.scale.setScalar(p.s); tmp.updateMatrix(); im.setMatrixAt(n, tmp.matrix); });
     im.castShadow = true;
     scene.add(im);
   }
+  // ---------------- Undergrowth: plantain clumps and weeds ----------------
+  const solidTags = new Set(['building', 'wall', 'tree', 'pole', 'vehicle']);
+  const free = (x, z) => !onRoad(x, z, 0.4) && !col.inside(x, z, solidTags);
+  const weeds = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    if (j === CANAL_ROW) continue;
+    const ox = gx(i), oz = gx(j), kind = blockKind(i, j);
+    // plantain clumps in back yards and empty plots (three or four stems together)
+    for (let n = 0; n < (kind === 'town' ? 4 : kind === 'paddy' ? 2 : 1); n++) {
+      const x = ox + 10 + prand() * (B - 20), z = oz + 10 + prand() * (B - 20);
+      if (!free(x, z)) continue;
+      for (let q = 0; q < 3 + Math.floor(prand() * 2); q++) {
+        const a = prand() * Math.PI * 2, r = 0.5 + prand() * 0.9;
+        if (free(x + Math.cos(a) * r, z + Math.sin(a) * r)) bananas.push({ x: x + Math.cos(a) * r, z: z + Math.sin(a) * r, s: 0.65 + prand() * 0.5, ry: prand() * 6 });
+      }
+    }
+    // weeds scattered through the plots
+    for (let n = 0; n < 22; n++) {
+      const x = ox + 8.5 + prand() * (B - 17), z = oz + 8.5 + prand() * (B - 17);
+      if (free(x, z)) weeds.push({ x, z, s: 0.7 + prand() * 0.7, ry: prand() * 6 });
+    }
+  }
+  // weeds along the gravel shoulders and at the foot of the drain
+  for (let k = 0; k <= N; k++) for (const vertical of [true, false]) for (let m = 0; m < N; m++) {
+    if (vertical && m === CANAL_ROW) continue;
+    for (const side of [-1, 1]) for (let a = gx(m) + KERB + 0.5; a < gx(m + 1) - KERB; a += 1.2 + prand() * 3.5) {
+      const lat = side * (ROAD_HALF + 0.15 + prand() * 0.5);
+      const x = vertical ? gx(k) + lat : a, z = vertical ? a : gx(k) + lat;
+      weeds.push({ x, z, s: 0.5 + prand() * 0.6, ry: prand() * 6 });
+    }
+  }
+  // and around the Metro piers
+  for (let z = -HALF + 15; z < HALF; z += 30) for (let n = 0; n < 4; n++) {
+    const a = prand() * Math.PI * 2;
+    weeds.push({ x: metroX + Math.cos(a) * 1.1, z: z + Math.sin(a) * 1.0, s: 0.8 + prand() * 0.5, ry: prand() * 6 });
+  }
+  {
+    const wb = new Bucket();
+    const blade = new THREE.ConeGeometry(0.035, 1, 3, 1, true).translate(0, 0.5, 0);
+    for (let q = 0; q < 7; q++) {
+      const a = (q / 7) * Math.PI * 2, tilt = 0.25 + (q % 3) * 0.15, h = 0.35 + (q % 4) * 0.12;
+      wb.add(blade, q % 3 ? '#4f7a2c' : '#6b8a36', Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06, Math.cos(a) * tilt, 0, -Math.sin(a) * tilt, 1, h, 1);
+    }
+    const weedMat = swayMat(0.7, 0.12);
+    const wim = new THREE.InstancedMesh(wb.merge(), weedMat, weeds.length);
+    weeds.forEach((p, n) => { tmp.position.set(p.x, 0.02, p.z); tmp.rotation.set(0, p.ry, 0); tmp.scale.setScalar(p.s); tmp.updateMatrix(); wim.setMatrixAt(n, tmp.matrix); });
+    wim.receiveShadow = true;
+    scene.add(wim);
+  }
+
+  // ---------------- Distant skyline ----------------
+  // Low-poly silhouettes far out in the haze: a temple gopuram, a church with twin spires, a mosque,
+  // and the high-rises along Marine Drive and Kakkanad. Unlit and unfogged; their colour follows the
+  // horizon so they always read as shapes in the humid air.
+  // ordinary depth-tested shapes: hazy things nearer still cover their bases, and they hide the low
+  // cloud streaks behind them
+  const skyFar = new THREE.MeshBasicMaterial({ color: '#b9c2c4', fog: false });
+  const skyNear = new THREE.MeshBasicMaterial({ color: '#aab4b6', fog: false });
+  {
+    const far = new Bucket(), near = new Bucket();
+    // each landmark is modelled at the origin, then placed and scaled up about its own base: in the haze
+    // they need to stand well above the town's roof line to read at all
+    const place = (into, sub, x, z, sc, ry = 0) => into.add(sub.merge(), '#fff', x, 0, z, 0, ry, 0, sc, sc, sc);
+    const gop = new Bucket();                                    // gopuram: stepped tower narrowing upward, with finials
+    for (let t = 0; t < 9; t++) gop.box(40 - t * 3.8, 6.4, 18 - t * 1.4, '#fff', 0, 3.2 + t * 6.4, 0);
+    gop.box(12, 4, 4, '#fff', 0, 59.6, 0);
+    for (const dx of [-4, 0, 4]) gop.add(new THREE.ConeGeometry(1, 5, 6), '#fff', dx, 64, 0);
+    place(far, gop, 700, -230, 2.1, 0.5);
+    const ch = new Bucket();                                     // church: nave, twin towers with spires
+    ch.box(18, 24, 34, '#fff', 0, 12, 0);
+    for (const dz of [-9, 9]) { ch.box(7, 44, 7, '#fff', 2, 22, dz); ch.add(new THREE.ConeGeometry(4.2, 18, 8), '#fff', 2, 53, dz); }
+    place(far, ch, -720, 260, 2.2);
+    const mq = new Bucket();                                     // mosque: drum and dome, two minarets
+    mq.box(26, 14, 26, '#fff', 0, 7, 0);
+    mq.add(new THREE.SphereGeometry(10, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), '#fff', 0, 14, 0);
+    for (const dx of [-17, 17]) { mq.add(new THREE.CylinderGeometry(1.3, 1.6, 50, 10), '#fff', dx, 25, 0); mq.add(new THREE.SphereGeometry(2.2, 10, 8), '#fff', dx, 51, 0); }
+    place(far, mq, 220, 740, 2.2);
+    // high-rises: Marine Drive to the south-west, Kakkanad to the north-east
+    for (const [cx, cz, n] of [[-460, -760, 9], [700, 640, 7]]) for (let q = 0; q < n; q++) {
+      const w = 26 + prand() * 22, h = 90 + prand() * 150;
+      (q % 2 ? far : near).box(w, h, w * (0.7 + prand() * 0.5), '#fff', cx + (prand() - 0.5) * 320, h / 2, cz + (prand() - 0.5) * 140);
+    }
+    const fm = new THREE.Mesh(far.merge(), skyFar), nm = new THREE.Mesh(near.merge(), skyNear);
+    scene.add(fm, nm);
+  }
+  function setSkyline(horizon) { skyFar.color.copy(horizon).multiplyScalar(0.5); skyNear.color.copy(horizon).multiplyScalar(0.4); }   // linear: ≈ 30–40% darker on screen
+
   for (let i = bananas.length - 1; i >= 0; i--) if (onRoad(bananas[i].x, bananas[i].z, 1)) bananas.splice(i, 1);
   const bim = new THREE.InstancedMesh(bananaGeometry(), bananaMat, bananas.length);
   bananas.forEach((p, n) => { tmp.position.set(p.x, 0, p.z); tmp.rotation.set(0, p.ry, 0); tmp.scale.setScalar(p.s); tmp.updateMatrix(); bim.setMatrixAt(n, tmp.matrix); });
@@ -1244,5 +1450,5 @@ export function buildWorld(scene) {
     props.update(t, dt);
   }
 
-  return { setNight, props, shops, posterMeshes, electionGroup, setWind, setWet, mats, posterSpots: posters.spots, politicalSpots: politics.spots, colliders: col, zoneAt, alleys, signals, lmSpots, setRain, update, canal: [zc0, zc1] };
+  return { setSkyline, metroX, setNight, props, shops, posterMeshes, electionGroup, setWind, setWet, mats, posterSpots: posters.spots, politicalSpots: politics.spots, colliders: col, zoneAt, alleys, signals, lmSpots, setRain, update, canal: [zc0, zc1] };
 }

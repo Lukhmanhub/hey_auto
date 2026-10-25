@@ -116,6 +116,7 @@ button { font: inherit; color: inherit; }
   position: absolute; top: 222px; right: 16px; width: 220px; display: flex; justify-content: center; align-items: center; gap: 6px; pointer-events: none;
 }
 .clock > * { position: relative; }
+.roadname { display: none; position: absolute; }
 .clock::before { content: ''; position: absolute; left: 50%; top: 0; width: 132px; height: 34px; margin-left: -66px; border-radius: 99px;
   background: linear-gradient(180deg, #232421, #111210); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 8px 20px rgba(0,0,0,.4); }
 .clock b { font-family: var(--lcd); font-size: 21px; font-weight: 400; color: #ffe9b0; letter-spacing: .04em; line-height: 34px; text-shadow: 0 0 8px rgba(255,200,120,.45); }
@@ -335,6 +336,8 @@ html.touch .map { --z: 0.5; top: calc(12px / 0.5); right: calc((66px + var(--sr)
 html.touch .map.big { --z: 0.95; }
 html.touch .clock { --z: 0.6; top: calc(128px / 0.6); right: calc((60px + var(--sr)) / 0.6); }
 html.touch .map.big ~ .clock { opacity: 0; }
+html.touch .roadname { display: block; --z: 0.6; top: calc(152px / 0.6); right: calc((60px + var(--sr)) / 0.6); width: 220px; text-align: center; font-size: 17px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+html.touch .map.big ~ .roadname { opacity: 0; }
 html.touch .radio { --z: 0.66; top: calc(104px / 0.66); right: calc((196px + var(--sr)) / 0.66); }
 html.touch .r-chip, html.touch .r-panel .keys { display: none; }
 html.touch .r-panel { margin-top: 0; }

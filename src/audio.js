@@ -82,8 +82,24 @@ export class Sound {
     const wobG = ctx.createGain(); wobG.gain.value = 350;
     wob.connect(wobG); wobG.connect(this.crowd.f.frequency); wob.start();
 
+    // ---- humid city ambience bed (always on, under the radio): far traffic hum, cicadas by day, crickets at night
+    this.hum = loop('lowpass', 150, 0.5);
+    this.far = loop('bandpass', 520, 0.6);
+    this.cicada = loop('bandpass', 5200, 9);
+    const trem = ctx.createOscillator(); trem.frequency.value = 23;
+    const tremG = ctx.createGain(); tremG.gain.value = 0.5;
+    const cg = ctx.createGain(); cg.gain.value = 0.5;
+    trem.connect(tremG); tremG.connect(cg.gain); trem.start();
+    this.cicada.g.disconnect(); this.cicada.g.connect(cg); cg.connect(this.master);
+    this.cricket = loop('bandpass', 4300, 14);
+    const chirp = ctx.createOscillator(); chirp.type = 'square'; chirp.frequency.value = 3.1;
+    const chirpG = ctx.createGain(); chirpG.gain.value = 0.5;
+    const kg = ctx.createGain(); kg.gain.value = 0.5;
+    chirp.connect(chirpG); chirpG.connect(kg.gain); chirp.start();
+    this.cricket.g.disconnect(); this.cricket.g.connect(kg); kg.connect(this.master);
+
     this.radio = new Radio(ctx, this.master, this.noise);
-    this.timers = { crow: 3, koel: 12, temple: 4, church: 10, frog: 2, whistle: 6 };
+    this.timers = { crow: 3, koel: 12, temple: 4, church: 10, frog: 2, whistle: 6, horn: 5, drip: 1 };
     this.bank.probe().then((found) => {
       this.clipsFound = found;
       if (this.bank.has('engine')) { this.eng.gain.value = 0; this.engineId = this.bank.play('engine', { vol: 0.5 }); }
@@ -108,7 +124,7 @@ export class Sound {
     return p;
   }
 
-  update(dt, player, world, raining) {
+  update(dt, player, world, raining, env = {}) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const speed = Math.abs(player.speed), throttle = player.throttle;
@@ -150,6 +166,21 @@ export class Sound {
       T.church = rnd(22, 34);
     }
     if (T.frog <= 0) { if (raining) this.frog(rnd(-1, 1)); T.frog = rnd(0.4, 1.6); }
+
+    // the city bed: hum and far traffic always, insects by time of day, quieter under heavy rain
+    const night = env.night ?? 0, dry = raining ? 0.4 : 1;
+    this.hum.g.gain.setTargetAtTime(0.05, t, 1);
+    this.far.g.gain.setTargetAtTime(0.018 * (1 - night * 0.6) * dry, t, 1);
+    this.cicada.g.gain.setTargetAtTime(0.012 * (1 - night) * dry, t, 2);
+    this.cricket.g.gain.setTargetAtTime(0.02 * night * dry, t, 2);
+    // a horn somewhere across town
+    if (T.horn <= 0) { this.honk(rnd(70, 140), rnd(-0.9, 0.9), Math.random() < 0.3); T.horn = rnd(3, 9) * (1 + night * 2); }
+    // after the rain: water dripping off roof edges and shop awnings
+    if (T.drip <= 0) {
+      const w = env.wet ?? 0;
+      if (!raining && w > 0.3) this.drip(rnd(-0.8, 0.8), (w - 0.3) * 0.12);
+      T.drip = rnd(0.12, 0.9) / Math.max(0.3, w);
+    }
     // festival: the procession's panchari melam carries across town
     if (this.melamAt) {
       this.melamT = (this.melamT ?? 0) - dt; this.melamStep = this.melamStep ?? 0;
@@ -159,6 +190,14 @@ export class Sound {
         this.melamT += 0.12;
       }
     }
+  }
+
+  drip(pan, vol) {                          // a single drop: a quick falling sine "plip"
+    const ctx = this.ctx, t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    const f = rnd(1300, 2600);
+    o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.06);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(this.out(pan)); o.start(t); o.stop(t + 0.1);
   }
 
   beep(freqs, dur, vol, type = 'square', filter = 1400, pan = 0) {

@@ -63,9 +63,9 @@ export function buildProps(ctx) {
   // ---------------- bus shelters (sponsor painted on the back wall) ----------------
   const SPONSORS = [
     ['സ്വർണ്ണമുദ്ര ജ്വല്ലേഴ്സ്', 'Sponsored by Swarnamudra Jewellers', '#8c1026', '#f2c94c'],
-    ['തെക്കുംപുറം കുറീസ്', 'Chitty · Gold Loan — Sponsored', '#1a237e', '#ffffff'],
+    ['കൊച്ചിൻ കുറീസ്', 'Chitty · Gold Loan — Sponsored', '#1a237e', '#ffffff'],
     ['മംഗല്യ സിൽക്സ്', 'Wedding Sarees — Sponsored', '#4a148c', '#ffe082'],
-    ['ലയൺസ് ക്ലബ്ബ് തെക്കുംപുറം', 'Bus shelter donated 2019', '#0d47a1', '#ffd54f'],
+    ['ലയൺസ് ക്ലബ്ബ് കലൂർ', 'Bus shelter donated 2019', '#0d47a1', '#ffd54f'],
   ];
   let shelters = 0;
   for (let i = 0; i < N && shelters < 6; i++) for (let j = 0; j < N && shelters < 6; j++) {

@@ -9,7 +9,7 @@ import iMoon from 'lucide-static/icons/moon.svg?raw';
 import iCloud from 'lucide-static/icons/cloud.svg?raw';
 import iRain from 'lucide-static/icons/cloud-rain.svg?raw';
 import { formatClock } from './daycycle.js';
-import { N, B, BOUND, KERB as ROAD_HALF, CANAL_ROW, LANDMARKS, ONE_WAY_ROWS, ONE_WAY_COLS, SPEED_LIMIT, gx, blockKind } from './config.js';
+import { N, B, HALF, BOUND, KERB as ROAD_HALF, ROAD_NAMES, METRO_LINE, CANAL_ROW, LANDMARKS, ONE_WAY_ROWS, ONE_WAY_COLS, SPEED_LIMIT, gx, blockKind } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const PX = 1.2;                 // static minimap pixels per metre
@@ -85,6 +85,12 @@ export class Hud {
     };
     for (const k in ONE_WAY_ROWS) for (let m = 0; m < N; m++) chev(P(gx(m) + B / 2), P(gx(+k)), ONE_WAY_ROWS[k], 0);
     for (const k in ONE_WAY_COLS) for (let m = 0; m < N; m++) chev(P(gx(+k)), P(gx(m) + B / 2), 0, ONE_WAY_COLS[k]);
+    // Kochi Metro: a teal line along MG Road with the two stations
+    const mx = P(gx(METRO_LINE) - 4.6);
+    x.strokeStyle = '#13a3a8'; x.lineWidth = 3.2; x.setLineDash([]);
+    x.beginPath(); x.moveTo(mx, P(-BOUND + 20)); x.lineTo(mx, P(BOUND - 20)); x.stroke();
+    x.fillStyle = '#ffffff'; x.strokeStyle = '#13a3a8'; x.lineWidth = 2.4;
+    for (const z of [gx(1) + 30, gx(6) + 30]) { x.beginPath(); x.arc(mx, P(z), 4.2, 0, Math.PI * 2); x.fill(); x.stroke(); }
     return c;
   }
 
@@ -312,8 +318,18 @@ export class Hud {
     const state = m.state === 'riding' ? 'trip' : m.state === 'pickup' || m.state === 'boarding' ? 'request' : 'cruise';
     $('hud').dataset.state = state;
 
+    // which street are we on? (sticks to the last one through junctions)
+    {
+      const i = Math.round((player.pos.x + HALF) / B), j = Math.round((player.pos.z + HALF) / B);
+      const dx = Math.abs(player.pos.x - (i * B - HALF)), dz = Math.abs(player.pos.z - (j * B - HALF));
+      const onV = dx < ROAD_HALF && i >= 0 && i <= N, onH = dz < ROAD_HALF && j >= 0 && j <= N;
+      if (onV && !onH) this.road = ROAD_NAMES.v[i]; else if (onH && !onV) this.road = ROAD_NAMES.h[j];
+      else if (!onV && !onH) this.road = null;
+      const rn = this.road ?? '';
+      if ($('roadname').textContent !== rn) $('roadname').textContent = rn;
+    }
     $('zone').textContent = rules.status?.wrongWay ? 'One-way — wrong way!' : rules.status?.wrongSide ? 'Keep left!' :
-      ({ road: 'On road', footpath: 'On the footpath!', alley: 'Idavazhi · alley', yard: 'Compound', paddy: 'Paddy field · mud', grass: 'Off-road' }[player.zone] ?? '');
+      ({ road: this.road ?? 'On road', footpath: 'On the footpath!', alley: 'Idavazhi · alley', yard: 'Compound', paddy: 'Paddy field · mud', grass: 'Off-road' }[player.zone] ?? '');
     $('zone').classList.toggle('bad', !!(rules.status?.wrongSide || rules.status?.wrongWay || player.zone === 'footpath'));
     this.roadAlert(rules.status);
 

@@ -407,6 +407,22 @@ document.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('clic
 // tap the minimap to see more of the town
 if (TOUCH) document.querySelector('#hud .map').addEventListener('click', (e) => e.currentTarget.classList.toggle('big'));
 
+// ---------- Indicators ----------
+// Steering at speed blinks an indicator, and keeps it going for a moment after the turn.
+// By request it's wired opposite to the steer: turning right lights the LEFT indicator, and vice versa.
+const blink = { side: null, hold: 0, t: 0, on: false };
+function updateIndicators(dt) {
+  const st = player.steer, moving = Math.abs(player.speed) > 0.8;
+  if (moving && Math.abs(st) > 0.12) { blink.side = st < 0 ? 'left' : 'right'; blink.hold = 0.8; }   // steer < 0 is a right turn
+  else blink.hold -= dt;
+  if (blink.hold <= 0) blink.side = null;
+  blink.t += dt;
+  const on = !!blink.side && blink.t % 0.66 < 0.36;
+  if (on !== blink.on && blink.side) sound.beep?.([on ? 1250 : 980], 0.018, 0.025, 'square', 2200);
+  blink.on = on;
+  for (const k of ['left', 'right']) player.m.indicators[k].emissiveIntensity = on && blink.side === k ? 4 : 0;
+}
+
 // ---------- Day events: the same streets on a different day ----------
 const DAY_LABEL = { normal: 'Ordinary day', monsoon: 'Monsoon day', hartal: 'Hartal', election: 'Election season', festival: 'Temple festival', christmas: 'Christmas eve' };
 const DAY_WEIGHTS = [['normal', 30], ['monsoon', 20], ['hartal', 10], ['election', 16], ['festival', 14], ['christmas', 10]];
@@ -530,6 +546,7 @@ function step(dt) {
   const events = [];
   player.grip = raining ? 0.75 : 1;
   const bump = player.update(dt, readInput(), world, t);
+  updateIndicators(dt);
   if (bump) {
     sound.crash(bump.impact);
     haptic(bump.impact / 8, 160, bump.impact > 6 ? 0.5 : 0);
@@ -622,7 +639,7 @@ function step(dt) {
   // continuous rumble on rough ground
   if ((player.zone === 'paddy' || player.zone === 'alley' || player.zone === 'grass') && Math.abs(player.speed) > 2) shake = Math.max(shake, 0.03);
 
-  sound.update(dt, player, world, raining);
+  sound.update(dt, player, world, raining, { wet: wetness, night: nightAmt });
   sound.radio?.updateMix(dt, camMode === 2, Math.abs(player.speed));
   hudT -= dt;
   if (hudT <= 0) {
@@ -706,6 +723,7 @@ function updateEnv(dt) {
   const lowSun = skyU.sunLow.value;
   skyU.horizon.value.lerp(_haze.copy(HAZE).multiplyScalar(lerp(1, 0.6, overcast)), (1 - nightAmt) * (1 - lowSun * 0.7) * 0.55);
   scene.fog.color.copy(skyU.horizon.value);
+  world.setSkyline(skyU.horizon.value);
   scene.fog.density = lerp(6 / k.fogFar, 0.019, rainAmt);
   skyU.sunAmt.value = (1 - overcast) * (1 - nightAmt) * 0.5;   // the sun is a bright smudge behind the haze
   skyU.uNight.value = nightAmt * (1 - overcast);
@@ -759,7 +777,7 @@ function onHour(h) {
   missions.nightMult = nightFare ? 1.5 : 1;
   if (h === 22) hud.toast('info', 'Night charge on', 'After 10 pm the meter adds 50%');
   if (h === 5) hud.toast('info', 'Night charge off', 'Day fares again');
-  if (h === 6) hud.toast('info', 'Good morning, Thekkumpuram', 'The day shift begins');
+  if (h === 6) hud.toast('info', 'Good morning, Kochi', 'The day shift begins');
   if (h === 19) hud.toast('info', 'Evening', 'Headlights on — streets get busy at the chaya kadas');
 }
 

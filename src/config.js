@@ -12,8 +12,8 @@ export const BOUND = HALF + 26;  // invisible wall
 export const SPEED_LIMIT = 50;   // km/h, town-wide
 export const CANAL_ROW = 4;      // block row j that is backwater
 
-export const TOWN = 'Thekkumpuram';
-export const TOWN_ML = 'തെക്കുംപുറം';
+export const TOWN = 'Kochi';
+export const TOWN_ML = 'കൊച്ചി';
 
 // grid line index → world coordinate (same for x and z)
 export const gx = (i) => i * B - HALF;
@@ -26,17 +26,27 @@ export const ONE_WAY_COLS = { 6: -1 };
 // Signalised junctions [i, j]
 export const SIGNALS = [[2, 2], [4, 2], [6, 3], [3, 5], [5, 6], [1, 5], [4, 4]];
 
+// Real Ernakulam street names on the grid (the layout itself is not to scale). Index = grid line.
+// Vertical roads run along z (constant x); horizontal roads run along x (constant z).
+export const ROAD_NAMES = {
+  v: ['Thammanam Road', 'Kaloor–Kadavanthra Road', 'Chittoor Road', 'Banerji Road', 'MG Road', 'Park Avenue', 'Market Road', 'Convent Road', 'Seaport–Airport Road'],
+  h: ['NH 66 Bypass', 'Palarivattom Road', 'Broadway', 'Sahodaran Ayyappan Road', 'Shanmugham Road', 'Marine Drive', 'Rajaji Road', 'Jos Junction Road', 'Hospital Road'],
+};
+export const METRO_LINE = 4;   // the Kochi Metro viaduct runs above MG Road (vertical grid line 4)
+
 export const LANDMARKS = {
-  '2,6': { kind: 'temple', name: 'Sree Krishna Temple', ml: 'ശ്രീകൃഷ്ണ ക്ഷേത്രം', short: 'Ambalam', shortMl: 'അമ്പലം' },
-  '5,2': { kind: 'church', name: "St. Mary's Church", ml: 'സെന്റ് മേരീസ് പള്ളി', short: 'Palli', shortMl: 'പള്ളി' },
-  '6,5': { kind: 'mosque', name: 'Juma Masjid', ml: 'ജുമാ മസ്ജിദ്', short: 'Masjid', shortMl: 'മസ്ജിദ്' },
-  '3,2': { kind: 'busstand', name: 'KRTC Bus Stand', ml: 'കെ.ആർ.ടി.സി സ്റ്റാൻഡ്', short: 'KRTC stand', shortMl: 'കെ.ആർ.ടി.സി സ്റ്റാൻഡ്' },
-  '6,1': { kind: 'hospital', name: 'Medical College', ml: 'മെഡിക്കൽ കോളേജ്', short: 'Medical College', shortMl: 'മെഡിക്കൽ കോളേജ്' },
-  '0,6': { kind: 'railway', name: 'Railway Station', ml: 'റെയിൽവേ സ്റ്റേഷൻ', short: 'Railway station', shortMl: 'റെയിൽവേ സ്റ്റേഷൻ' },
-  '2,4': { kind: 'jetty', name: 'Boat Jetty', ml: 'ബോട്ട് ജെട്ടി', short: 'Boat jetty', shortMl: 'ബോട്ട് ജെട്ടി' },
+  '2,6': { kind: 'temple', name: 'Ernakulathappan Temple', ml: 'എറണാകുളത്തപ്പൻ ക്ഷേത്രം', short: 'Shiva temple', shortMl: 'അമ്പലം' },
+  '5,2': { kind: 'church', name: "St. Mary's Basilica", ml: 'സെന്റ് മേരീസ് ബസിലിക്ക', short: 'Basilica', shortMl: 'പള്ളി' },
+  '6,5': { kind: 'mosque', name: 'Kaloor Juma Masjid', ml: 'കലൂർ ജുമാ മസ്ജിദ്', short: 'Masjid', shortMl: 'മസ്ജിദ്' },
+  '3,2': { kind: 'busstand', name: 'Vyttila Mobility Hub', ml: 'വൈറ്റില ഹബ്', short: 'Vyttila Hub', shortMl: 'വൈറ്റില ഹബ്' },
+  '6,1': { kind: 'hospital', name: 'General Hospital', ml: 'ജനറൽ ആശുപത്രി', short: 'General Hospital', shortMl: 'ജനറൽ ആശുപത്രി' },
+  '0,6': { kind: 'railway', name: 'Ernakulam Junction', ml: 'എറണാകുളം ജംഗ്ഷൻ', short: 'Ernakulam South', shortMl: 'സൗത്ത് സ്റ്റേഷൻ' },
+  '2,4': { kind: 'jetty', name: 'Ernakulam Boat Jetty', ml: 'ബോട്ട് ജെട്ടി', short: 'Boat jetty', shortMl: 'ബോട്ട് ജെട്ടി' },
   '4,6': { kind: 'toddy', name: 'Kallu Shappu', ml: 'കള്ള് ഷാപ്പ്', short: 'Shappu', shortMl: 'ഷാപ്പ്' },
   '1,3': { kind: 'school', name: 'Govt. LP School', ml: 'ഗവ. എൽ.പി. സ്കൂൾ', short: 'School', shortMl: 'സ്കൂൾ' },
-  '4,7': { kind: 'fishmarket', name: 'Fish Market', ml: 'മീൻ ചന്ത', short: 'Meen chantha', shortMl: 'മീൻ ചന്ത' },
+  '4,7': { kind: 'fishmarket', name: 'Chambakkara Fish Market', ml: 'ചമ്പക്കര മീൻ ചന്ത', short: 'Meen chantha', shortMl: 'മീൻ ചന്ത' },
+  '3,0': { kind: 'mall', name: 'Lulu Mall', ml: 'ലുലു മാൾ', short: 'Lulu Mall', shortMl: 'ലുലു മാൾ' },
+  '4,1': { kind: 'stadium', name: 'JLN Stadium, Kaloor', ml: 'കലൂർ സ്റ്റേഡിയം', short: 'Kaloor Stadium', shortMl: 'കലൂർ സ്റ്റേഡിയം' },
 };
 
 const PADDY = new Set(['0,0', '1,0', '0,1', '7,7', '6,7', '7,6', '2,1', '5,6']);

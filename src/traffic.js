@@ -97,6 +97,13 @@ export class Traffic {
     const mix = [...Array(11).fill('car'), ...Array(9).fill('auto'), ...Array(7).fill('scooter'), ...Array(5).fill('bus'),
       'taxi', 'taxi', 'tempo', 'tempo', 'goods', 'goods', 'van', 'fish', 'fish', 'cow', 'cow', 'cow', 'jeep', 'jeep'];
     for (const type of mix) this.spawn(type, avoid);
+    // scooter swarms: packs of four riding two abreast, weaving a little, sticking with their leader
+    for (let n = 0; n < 6; n++) {
+      const lead = this.spawn('scooter', avoid);
+      if (!lead) continue;
+      lead.slot = 0.45; lead.weave = this.r() * 6; lead.pack = [];
+      for (let k = 1; k < 4; k++) { const f = this.spawn('scooter', null, { follow: lead, k }); if (f) lead.pack.push(f); }
+    }
     // Pooram procession: elephants walk a fixed loop round the temple block, nose to tail
     const loop = [[2, 6], [3, 6], [3, 7], [2, 7]];
     ['#d81b60', '#1e88e5', '#f2c94c'].forEach((parasol, k) => this.spawn('elephant', null, { loop, k, parasol }));
@@ -130,7 +137,12 @@ export class Traffic {
     const r = this.r;
     const c = { type, ...TYPES[type], speed: 0, wait: 0, honkCd: 0, blockedByPlayer: 0, pos: new THREE.Vector3(), heading: 0, timer: r() * 8 };
     for (let tries = 0; tries < 80; tries++) {
-      if (opts.loop) {
+      if (opts.follow) {
+        const L = opts.follow;
+        this.setLane(c, L.a, L.b);
+        c.s = Math.max(0, L.s - Math.ceil(opts.k / 2) * 2.6 - (opts.k % 2 ? 0 : 1.2));
+        c.leader = L; c.slot = opts.k % 2 ? -0.45 : 0.45; c.weave = r() * 6;
+      } else if (opts.loop) {
         c.loop = opts.loop; c.li = 0;
         this.setLane(c, opts.loop[0], opts.loop[1]);
         c.s = c.laneLen - 6 - opts.k * 6.5;
@@ -143,8 +155,8 @@ export class Traffic {
         c.s = 3 + r() * (c.laneLen - 14);
       }
       this.place(c);
-      if (!opts.loop && avoid && c.pos.distanceTo(avoid) < 30) continue;
-      if (!opts.loop && this.cars.some((o) => o.pos.distanceTo(c.pos) < 14)) continue;
+      if (!opts.loop && !opts.follow && avoid && c.pos.distanceTo(avoid) < 30) continue;
+      if (!opts.loop && !opts.follow && this.cars.some((o) => o.pos.distanceTo(c.pos) < 14)) continue;
       let geo;
       if (type === 'car') geo = carGeometry(CAR_COLORS[Math.floor(r() * CAR_COLORS.length)]);
       else if (type === 'auto') { const [a, b] = AUTO_COLORS[Math.floor(r() * AUTO_COLORS.length)]; geo = autoGeometry(a, b); }
@@ -167,10 +179,11 @@ export class Traffic {
       }
       if (type === 'auto') c.mesh.add(autoBackDecals(AUTO_NAMES[1 + Math.floor(r() * (AUTO_NAMES.length - 1))], randomPlate(r)));
       c.max *= 0.85 + r() * 0.3;
+      if (opts.follow) c.max = opts.follow.max * (0.97 + r() * 0.06);
       this.scene.add(c.mesh);
       this.cars.push(c);
       this.sync(c);
-      return;
+      return c;
     }
   }
 
@@ -186,6 +199,14 @@ export class Traffic {
   }
 
   chooseNext(c) {
+    const L = c.leader;
+    if (L && L.active !== false) {
+      const same = (p, q) => p[0] === q[0] && p[1] === q[1];
+      // leader still on our road and already decided, or mid-turn at our junction: follow its choice
+      if (L.next && same(L.b, c.b) && (same(L.a, c.a) || L.state === 'turn')) { c.next = L.next; return; }
+      // leader has already turned off our junction: take the same road it took
+      if (same(L.a, c.b) && !same(L.b, c.a) && edgeAllowed(c.b[0], c.b[1], L.b[0], L.b[1])) { c.next = L.b; return; }
+    }
     if (c.loop) { c.li = (c.li + 1) % c.loop.length; c.next = c.loop[(c.li + 1) % c.loop.length]; return; }
     const [bi, bj] = c.b;
     let opts = neighbors(bi, bj).filter((n) => !(n[0] === c.a[0] && n[1] === c.a[1]) && edgeAllowed(bi, bj, n[0], n[1]));
@@ -231,6 +252,11 @@ export class Traffic {
 
   sync(c) {
     c.mesh.position.copy(c.pos);
+    if (c.slot !== undefined) {
+      const off = c.slot + Math.sin((this.time ?? 0) * 0.8 + c.weave) * 0.22;
+      c.mesh.position.x += Math.cos(c.heading) * off;    // (cos h, −sin h) is the rider's left
+      c.mesh.position.z -= Math.sin(c.heading) * off;
+    }
     c.mesh.rotation.y = c.heading;
   }
 
@@ -283,6 +309,7 @@ export class Traffic {
         if (along <= 0 || along > 22) continue;
         const lat = Math.abs(dx * fz - dz * fx);
         if (lat > c.halfW + o.halfW + 0.4) continue;
+        if (c.slot !== undefined && o.slot !== undefined && c.slot !== o.slot && along < 2.2) continue;   // riding abreast
         gap = Math.min(gap, along - c.halfLen - o.halfLen);
       }
       // the player
@@ -297,6 +324,12 @@ export class Traffic {
         }
       }
       if (gap < Infinity) target = Math.min(target, Math.max(0, (gap - 2) * 1.1));
+      // a pack leader eases off when the others fall behind (a red light, a turn), so the pack regroups
+      if (c.pack?.length) {
+        let behind = 0;
+        for (const f of c.pack) if (f.active !== false) behind = Math.max(behind, f.pos.distanceTo(c.pos));
+        if (behind > 14 && behind < 70) target = Math.min(target, 2.5);
+      }
       if (c.argue > 0) { c.argue -= dt; target = 0; }
 
       if (c.state === 'lane') {

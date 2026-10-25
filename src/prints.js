@@ -121,7 +121,7 @@ function film({ title, en, tag, c1, c2, bg, hero, extra }) {
     massTitle(x, title, w / 2, h * 0.72, w * 0.16, w * 0.92, c1, c2);
     text(x, en, w / 2, h * 0.81, w * 0.055, { font: MASS, weight: 800, fill: c1, max: w * 0.9 });
     text(x, tag, w / 2, h * 0.88, w * 0.05, { fill: '#fff', max: w * 0.9 });
-    text(x, 'തെക്കുംപുറം രാജ്യ · ശ്രീ മുരുകൻ · കായൽ സിനിമാസ്', w / 2, h * 0.95, w * 0.032, { fill: 'rgba(255,255,255,.75)', max: w * 0.92 });
+    text(x, 'കൊച്ചി രാജ്യ · ശ്രീ മുരുകൻ · കായൽ സിനിമാസ്', w / 2, h * 0.95, w * 0.032, { fill: 'rgba(255,255,255,.75)', max: w * 0.92 });
     grain(x, w, h, 0.05, title.length);
   };
 }
@@ -138,7 +138,7 @@ export const FILMS = [
     vgrad(x, w, h, ['#000', '#3d0000', '#000']); rays(x, w / 2, h * 0.4, 24, 'rgba(255,200,0,.10)');
     portrait(x, w * 0.5, h * 0.4, w * 0.25, { shades: true, shirt: '#111', skin: '#8a5634', beard: true });
     text(x, 'ഇട്ടിച്ചൻ ഫാൻസ് & വെൽഫെയർ അസോസിയേഷൻ', w / 2, h * 0.07, w * 0.042, { fill: '#ffd000', max: w * 0.94 });
-    text(x, 'തെക്കുംപുറം യൂണിറ്റ്', w / 2, h * 0.12, w * 0.04, { fill: '#fff' });
+    text(x, 'എറണാകുളം യൂണിറ്റ്', w / 2, h * 0.12, w * 0.04, { fill: '#fff' });
     massTitle(x, 'റിലീസ് ആശംസകൾ', w / 2, h * 0.74, w * 0.12, w * 0.92, '#ffffff', '#ffd000');
     text(x, 'ഇടിവെട്ട് ഇട്ടിച്ചൻ — ഇന്ന് രാവിലെ 6 മണിക്ക് ഫാൻസ് ഷോ', w / 2, h * 0.84, w * 0.04, { fill: '#fff', max: w * 0.92 });
     text(x, 'ഇട്ടിച്ചായാ, ഞങ്ങൾ കൂടെയുണ്ട്!!', w / 2, h * 0.91, w * 0.036, { font: PAINT, fill: '#ffd000', max: w * 0.92 });
@@ -216,7 +216,7 @@ export const ADS = [
     portrait(x, w * 0.5, h * 0.37, w * 0.17, { bw: true, old: true, glasses: true, skin: '#999', shirt: '#f2f2f2', bald: true });
     x.strokeStyle = '#111'; x.lineWidth = 6; x.strokeRect(w * 0.2, h * 0.2, w * 0.6, h * 0.42);
     text(x, 'കെ. പി. വർഗീസ് (82)', w / 2, h * 0.7, w * 0.08, { fill: '#111', max: w * 0.85 });
-    text(x, 'പുത്തൻപുരയ്ക്കൽ, തെക്കുംപുറം', w / 2, h * 0.77, w * 0.05, { fill: '#333', max: w * 0.85 });
+    text(x, 'പുത്തൻപുരയ്ക്കൽ, കലൂർ', w / 2, h * 0.77, w * 0.05, { fill: '#333', max: w * 0.85 });
     text(x, 'സംസ്കാരം നാളെ 3 മണിക്ക് സെന്റ് മേരീസ് പള്ളിയിൽ', w / 2, h * 0.84, w * 0.04, { fill: '#333', max: w * 0.85 });
     text(x, 'ദുഃഖാർത്തരായ കുടുംബാംഗങ്ങൾ', w / 2, h * 0.91, w * 0.045, { fill: '#111', max: w * 0.85 });
   },
@@ -234,7 +234,7 @@ export const ADS = [
     portrait(x, w * 0.5, h * 0.38, w * 0.2, { shirt: '#2d2d2d', skin: '#a26a42', shades: true });
     massTitle(x, 'ജന്മദിനാശംസകൾ', w / 2, h * 0.7, w * 0.11, w * 0.94, '#ffffff', '#ffd000', '#3a005a');
     text(x, 'ഞങ്ങളുടെ ചങ്ക് ബിജുമോന്', w / 2, h * 0.8, w * 0.065, { font: PAINT, fill: '#fff', max: w * 0.92 });
-    text(x, '— തെക്കുംപുറം ഫ്രണ്ട്സ് ക്ലബ്ബ് —', w / 2, h * 0.9, w * 0.045, { fill: '#ffd000', max: w * 0.92 });
+    text(x, '— കലൂർ ഫ്രണ്ട്സ് ക്ലബ്ബ് —', w / 2, h * 0.9, w * 0.045, { fill: '#ffd000', max: w * 0.92 });
   },
   (x, w, h) => {   // wedding greetings
     vgrad(x, w, h, ['#fff4e0', '#f7d9b0']); x.strokeStyle = '#c99a2e'; x.lineWidth = 10; x.strokeRect(14, 14, w - 28, h - 28);
@@ -248,7 +248,7 @@ export const ADS = [
     vgrad(x, w, h, ['#ffb000', '#e04a00', '#5a1200']); rays(x, w / 2, h * 0.3, 30, 'rgba(255,255,255,.08)');
     for (let i = 0; i < 9; i++) { x.fillStyle = i % 2 ? '#fff3b0' : '#ff3d6e'; x.beginPath(); x.arc(w * (0.05 + i * 0.112), h * 0.05, w * 0.05, 0, Math.PI); x.fill(); }
     massTitle(x, 'സ്വാഗതം', w / 2, h * 0.3, w * 0.2, w * 0.9, '#fffbe0', '#ffd000', '#4a0d00');
-    text(x, 'തെക്കുംപുറം പൂരം 2026', w / 2, h * 0.5, w * 0.09, { fill: '#fff', max: w * 0.92 });
+    text(x, 'എറണാകുളത്തപ്പൻ ഉത്സവം 2026', w / 2, h * 0.5, w * 0.09, { fill: '#fff', max: w * 0.92 });
     text(x, 'ആനയെഴുന്നള്ളിപ്പ് · പഞ്ചാരിമേളം · വെടിക്കെട്ട്', w / 2, h * 0.62, w * 0.048, { fill: '#ffe9a8', max: w * 0.92 });
     text(x, 'ഏവർക്കും സ്വാഗതം — ഉത്സവ കമ്മിറ്റി', w / 2, h * 0.9, w * 0.045, { fill: '#fff', max: w * 0.92 });
   },
@@ -324,7 +324,7 @@ export const ADS = [
   },
   (x, w, h) => {   // chitty / gold loan
     vgrad(x, w, h, ['#fffde7', '#fff59d']); x.fillStyle = '#1a237e'; x.fillRect(0, 0, w, h * 0.22);
-    text(x, 'തെക്കുംപുറം കുറീസ്', w / 2, h * 0.11, w * 0.09, { fill: '#fff', max: w * 0.9 });
+    text(x, 'കൊച്ചിൻ കുറീസ്', w / 2, h * 0.11, w * 0.09, { fill: '#fff', max: w * 0.9 });
     text(x, 'ചിട്ടി · സ്വർണ്ണപ്പണയം', w / 2, h * 0.35, w * 0.09, { fill: '#1a237e', max: w * 0.9 });
     text(x, 'Gold Loan @ 0.99% p.m.', w / 2, h * 0.47, w * 0.06, { font: MASS, weight: 800, fill: '#b71c1c' });
     for (let i = 0; i < 5; i++) { x.fillStyle = '#f2c94c'; x.beginPath(); x.ellipse(w * 0.5, h * (0.66 - i * 0.03), w * 0.14, h * 0.025, 0, 0, 7); x.fill(); x.strokeStyle = '#b8902a'; x.lineWidth = 2; x.stroke(); }
