@@ -66,6 +66,7 @@ export async function POST(request) {
       case 'fine': inc('c:viol'); inc(`viol:${str(e.k, 16)}`); inc('fineSum', num(e.amt, 1000)); break;
       case 'set': inc(`set:${str(e.k, 12)}=${str(e.v, 12)}`); break;
       case 'fps': { const f = num(e.fps, 240); inc('c:fps'); inc('fpsSum', f); inc(`fps:${bucket(f, [20, 30, 45, 58], ' fps')}`); sess('fps', f); break; }
+      case 'mp': inc(`mp:${str(e.k, 12)}`); break;
       case 'err': inc('c:err'); inc(`err:${str(e.m, 60)}`); break;
       case 'beat': {
         const sec = num(e.sec, 60);

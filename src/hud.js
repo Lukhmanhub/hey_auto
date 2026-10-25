@@ -136,6 +136,16 @@ export class Hud {
       const [sx, sy] = toScreen(c.pos.x, c.pos.z);
       if (inside(sx, sy)) { x.beginPath(); x.arc(sx, sy, 1.8, 0, Math.PI * 2); x.fill(); }
     }
+    // friends on the stand: coloured arrows, pinned to the rim when they're off the map
+    for (const o of this.others ?? []) {
+      let [sx, sy] = toScreen(o.x, o.z);
+      const dx = sx - C, dy = sy - C, dd = Math.hypot(dx, dy), rim = R - 9;
+      if (dd > rim) { sx = C + (dx / dd) * rim; sy = C + (dy / dd) * rim; }
+      x.save(); x.translate(sx, sy); x.rotate(phi - o.h + Math.PI);
+      x.fillStyle = o.color; x.strokeStyle = '#111'; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(0, -8); x.lineTo(6, 6); x.lineTo(0, 3); x.lineTo(-6, 6); x.closePath(); x.fill(); x.stroke();
+      x.restore();
+    }
     // landmark labels: only when the whole label fits inside the circle
     x.font = '700 12px "Baloo Chettan 2", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
     for (const key in LANDMARKS) {

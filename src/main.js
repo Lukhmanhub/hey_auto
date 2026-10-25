@@ -16,6 +16,8 @@ import { Sound } from './audio.js';
 import { Hud } from './hud.js';
 import { TOUCH, touch, initTouch, releaseTouch, goFullscreen } from './touch.js';
 import * as stats from './analytics.js';
+import { Multiplayer, HEAR } from './multiplayer.js';
+import { initLobby } from './lobby.js';
 import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
 const canvas = document.getElementById('game');
@@ -246,6 +248,7 @@ const missions = new Missions(scene, world, player);
 }
 const sound = new Sound();
 const hud = new Hud(world, camera);
+const mp = new Multiplayer(scene);
 const GOAL = 800;   // daily net target, after the auto's rent
 let goalHit = false;
 const rules = new Rules(world, (v) => {
@@ -277,10 +280,11 @@ const actions = {
   horn: (on) => sound.horn(on),
   camera: () => { camMode = (camMode + 1) % 3; },
   radio: (back) => { back ? sound.radio?.prev() : sound.radio?.next(); hud.openRadio(); },
-  rain: () => setRain(!raining),
+  rain: () => toggleRain(),
   pause: () => setPaused(!paused),
 };
 window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;   // typing a name, code or chat line
   if (KEYS[e.code]) { input[KEYS[e.code]] = true; e.preventDefault(); }
   if (!running || e.repeat) return;
   if (e.code === 'KeyH') actions.horn(true);
@@ -292,7 +296,9 @@ window.addEventListener('keydown', (e) => {
     hud.toast('info', `Radio volume ${Math.round((r.level / 0.9) * 10)}`);
   }
   if (e.code === 'KeyR') actions.rain();
-  if (e.code === 'KeyT') { gameHour = (gameHour + 1) % 24; hud.toast('info', `Time skipped to ${formatClock(gameHour).text} ${formatClock(gameHour).ap}`); }
+  if (e.code === 'KeyT') skipHour();
+  if (mp.active && e.code === 'KeyV') mp.talk(true);
+  if (mp.active && (e.code === 'Enter' || e.code === 'NumpadEnter')) { e.preventDefault(); openChat(true); }
   if (e.code === 'KeyM') { muted = !muted; sound.setMuted(muted); hud.toast('info', muted ? 'Sound off' : 'Sound on'); }
   if (e.code === 'Slash' || e.code === 'F1') { e.preventDefault(); showHelp(document.getElementById('help').hidden); }
   if (e.code === 'KeyP' || e.code === 'Escape') {
@@ -303,8 +309,9 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   if (KEYS[e.code]) input[KEYS[e.code]] = false;
   if (e.code === 'KeyH') actions.horn(false);
+  if (e.code === 'KeyV') mp.talk(false);
 });
-window.addEventListener('blur', () => { for (const k in input) input[k] = false; releaseTouch(); sound.horn(false); });
+window.addEventListener('blur', () => { for (const k in input) input[k] = false; releaseTouch(); sound.horn(false); if (mp.talkHeld) mp.talk(false); });
 initTouch(actions);
 window.addEventListener('gamepadconnected', (e) => { padIndex = e.gamepad.index; if (running) hud.toast('info', 'Controller connected', 'RT drive · LT brake · A hand brake · B horn · X radio · Y camera'); });
 
@@ -399,8 +406,8 @@ document.querySelectorAll('[data-radio]').forEach((b) => b.addEventListener('cli
 }));
 document.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.more;
-  if (v === 'rain') setRain(!raining, true);
-  if (v === 'hour') { gameHour = (gameHour + 1) % 24; const c = formatClock(gameHour); b.textContent = `${c.text} ${c.ap}`; setTimeout(() => { b.textContent = '+1 hour'; }, 1200); }
+  if (v === 'rain') toggleRain(true);
+  if (v === 'hour') { skipHour(true); const c = formatClock(gameHour); b.textContent = `${c.text} ${c.ap}`; setTimeout(() => { b.textContent = '+1 hour'; }, 1200); }
   if (v === 'mute') { muted = !muted; sound.setMuted(muted); }
   syncPauseExtras();
 }));
@@ -456,9 +463,14 @@ function setRain(on, quiet) {
 startBtn.disabled = false;
 startBtn.textContent = 'Start shift';
 stats.loaded();
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', () => startShift());
+
+// Starts the day. Solo: a random day. On a stand: the host's day, clock and weather, and a spot in the queue.
+const SLOTS = [0, 8, -8, 16, -14];
+function startShift(env = {}) {
   goFullscreen();
   document.getElementById('title').hidden = true;
+  document.getElementById('lobby').hidden = true;
   document.getElementById('hud').hidden = false;
   running = true;
   sound.start();
@@ -470,11 +482,139 @@ startBtn.addEventListener('click', () => {
   radio.tune(0);   // Akashvani Ananthapuri FM
   radio.discover().then((n) => { if (n) hud.toast('info', 'Radio stations updated', `${n} trending Malayalam stations added — ${TOUCH ? 'change stations from ⏸' : 'press Q'}`); });
   hud.toast('info', `Auto rent ₹${missions.rent} paid`, `Today's goal: ₹${GOAL} net.${TOUCH ? '' : ' Press / for controls'}`);
-  setDay(rollDay(), true); applySettings();
+  if (env.hour !== undefined) gameHour = env.hour;
+  if (env.cloud !== undefined) weather.cloud = env.cloud;
+  setDay(env.day ?? rollDay(), true);
+  if (env.rain !== undefined && env.rain !== raining) setRain(env.rain, true);
+  applySettings();
+  if (mp.active) {
+    document.documentElement.classList.add('mp');
+    player.pos.z += SLOTS[Math.max(0, mp.roster.findIndex((m) => m.id === mp.me.id)) % SLOTS.length];
+    hud.toast('info', `Auto stand ${mp.code}`, TOUCH ? 'Hold TALK to speak to drivers near you' : 'Hold V to talk · Enter to chat with drivers near you');
+  }
   stats.started(settings);
   gfx.checks = 0; gfx.blanks = 0;   // look at the first frames on the road too
   stats.track('day', { k: today }, true);
+}
+
+// ---------- Auto stand (multiplayer) ----------
+const lobby = initLobby({ mp, track: stats.track, onShift: startShift, startEnv: () => ({ day: rollDay(), hour: gameHour, rain: false, cloud: 0 }) });
+lobby.ready();
+const envNow = () => ({ day: today, hour: Math.round(gameHour * 1000) / 1000, rain: raining, cloud: Math.round(weather.cloud * 100) / 100 });
+mp.envNow = envNow;
+const guest = () => mp.active && !mp.host;
+function toggleRain(quiet) {
+  if (guest()) { mp.send({ t: 'req', k: 'rain' }); hud.toast('info', 'Asked the stand host', 'Weather is shared, the host’s game changes it for everyone'); return; }
+  setRain(!raining, quiet);
+}
+function skipHour(quiet) {
+  if (guest()) { mp.send({ t: 'req', k: 'hour' }); hud.toast('info', 'Asked the stand host', 'The clock is shared, the host’s game moves it for everyone'); return; }
+  gameHour = (gameHour + 1) % 24;
+  if (!quiet) hud.toast('info', `Time skipped to ${formatClock(gameHour).text} ${formatClock(gameHour).ap}`);
+}
+mp.on('env', (m) => {
+  if (!running || mp.host) return;
+  if (m.day && m.day !== today) setDay(m.day, true);
+  if (m.rain !== raining) setRain(m.rain);
+  let d = m.hour - gameHour; d -= Math.round(d / 24) * 24;
+  if (Math.abs(d) > 0.03) gameHour = m.hour;
+  if (Math.abs(d) > 0.5) hud.toast('info', `Clock moved to ${formatClock(gameHour).text} ${formatClock(gameHour).ap}`, 'The stand shares one clock');
+  weather.cloud = m.cloud ?? weather.cloud;
 });
+mp.on('req', (k, who) => {
+  if (!running) return;
+  if (k === 'rain') setRain(!raining);
+  if (k === 'hour') { gameHour = (gameHour + 1) % 24; hud.toast('info', `${who?.name ?? 'A driver'} skipped an hour`, `${formatClock(gameHour).text} ${formatClock(gameHour).ap}`); }
+});
+mp.on('joined', (m) => { if (running) hud.toast('info', `${m.name} joined the stand`, 'Their auto has a coloured roof flag'); sound.ding?.(); });
+mp.on('left', (m) => { if (running) hud.toast('warn', `${m.name} left the stand`); });
+mp.on('closed', () => {
+  document.documentElement.classList.remove('mp');
+  if (running) hud.toast('warn', 'The stand closed', 'The host left, you’re driving solo now');
+});
+mp.on('mic', (st) => {
+  if (st === 'denied') hud.toast('warn', 'Microphone blocked', 'Allow the mic for this site to talk to other drivers');
+});
+mp.on('chat', (m, text, dist) => {
+  if (!running || !m || dist > HEAR * 1.4) return;   // only the drivers around you hear it
+  sound.pop?.();
+  chatBubble(text, m, () => mp.remotes.get(m.id)?.pos ?? player.pos);
+});
+function chatBubble(text, m, target) {
+  hud.bubble({ ml: text, mg: '', en: '' }, m.name, target, 2.9, 'mp', 6);
+  hud.bubbles.at(-1)?.el.style.setProperty('--c', m.color);
+}
+// chat: Enter (or the 💬 button on phones), type, Enter to send
+const chatBox = document.getElementById('chatbox'), chatIn = document.getElementById('chat-in');
+function openChat(on) {
+  if (!running || !mp.active) return;
+  chatBox.hidden = !on;
+  if (on) { for (const k in input) input[k] = false; chatIn.value = ''; chatIn.focus(); } else chatIn.blur();
+}
+function sendChat() {
+  const text = mp.chat(chatIn.value);
+  openChat(false);
+  if (!text) return;
+  chatBubble(text, mp.me, () => player.pos);
+  if (!mp.nearby(HEAR * 1.4).length) hud.toast('info', 'Nobody heard that', 'Drive up to a friend’s auto, they’re the coloured arrows on the map');
+}
+chatIn.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') sendChat();
+  if (e.key === 'Escape') openChat(false);
+});
+document.getElementById('chat-send').addEventListener('click', sendChat);
+chatIn.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== chatIn) chatBox.hidden = true; }, 150));
+// phones: hold TALK, tap 💬
+{
+  const talkBtn = document.querySelector('[data-mp="talk"]');
+  const up = () => { talkBtn.classList.remove('on'); mp.talk(false); };
+  talkBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); talkBtn.classList.add('on'); navigator.vibrate?.(10); mp.talk(true); });
+  talkBtn.addEventListener('pointerup', up); talkBtn.addEventListener('pointercancel', up); talkBtn.addEventListener('pointerleave', up);
+  document.querySelector('[data-mp="chat"]').addEventListener('pointerdown', (e) => { e.preventDefault(); openChat(chatBox.hidden); });
+}
+document.getElementById('leave-stand').addEventListener('click', () => {
+  mp.leave();
+  document.documentElement.classList.remove('mp');
+  hud.toast('info', 'You left the stand', 'Driving solo now');
+  setPaused(false);
+});
+mp.on('talk', () => drawStand());
+// friends' earnings, best first
+const standEl = document.getElementById('stand'), standList = document.getElementById('stand-list'), standHint = document.getElementById('stand-hint');
+let standT = 0;
+function drawStand() {
+  standEl.hidden = !mp.active || !running;
+  if (standEl.hidden) return;
+  const rows = mp.roster.map((m) => {
+    const me = m.id === mp.me.id, r = mp.remotes.get(m.id);
+    return { m, me, net: me ? missions.cash : r?.s.n ?? -missions.rent, rides: me ? missions.trips : r?.s.r ?? 0, talk: me ? mp.talking : !!r?.s.k };
+  }).sort((a, b) => b.net - a.net);
+  standList.textContent = '';
+  for (const r of rows) {
+    const li = document.createElement('li');
+    li.className = `${r.me ? 'me' : ''} ${r.talk ? 'talk' : ''}`;
+    const dot = document.createElement('i'); dot.style.background = r.m.color;
+    const nm = document.createElement('span'); nm.textContent = r.me ? `${r.m.name} (you)` : r.m.name;
+    const net = document.createElement('b'); net.textContent = `${r.net < 0 ? '−' : ''}₹${Math.abs(r.net)}`; net.className = r.net < 0 ? 'neg' : '';
+    const rides = document.createElement('small'); rides.textContent = `${r.rides} ride${r.rides === 1 ? '' : 's'}`;
+    li.append(dot, nm, net, rides);
+    standList.appendChild(li);
+  }
+  const near = mp.nearby().length;
+  standHint.className = `stand-hint${mp.talking ? ' on' : ''}`;
+  standHint.textContent = mp.talking ? (near ? `On air · ${near} driver${near > 1 ? 's' : ''} can hear you` : 'On air · nobody close enough to hear')
+    : mp.roster.length < 2 ? `Code ${mp.code} · waiting for friends` : `Hold V to talk · Enter to chat · ${near} nearby`;
+}
+let envT = 0;
+function updateStand(dt) {
+  if (!mp.active) { if (!standEl.hidden) standEl.hidden = true; hud.others = null; return; }
+  const bump = mp.update(dt, player, camera, { riding: missions.state === 'riding', net: missions.cash, rides: missions.trips }, !paused);
+  if (bump) { sound.crash(bump.impact); haptic(Math.min(1, bump.impact / 8), 160); }
+  hud.others = [...mp.remotes.values()].filter((r) => r.seen && r.root.visible).map((r) => ({ x: r.pos.x, z: r.pos.z, h: r.heading, color: mp.member(r.id)?.color ?? '#fff' }));
+  if ((standT -= dt) <= 0) { standT = 0.5; drawStand(); }
+  if (mp.host && (envT -= dt) <= 0) { envT = 1; mp.send({ t: 'env', ...envNow() }); }
+}
 
 // ---------- Smoke, dust and spray ----------
 const _e = new THREE.Vector3(), _v = new THREE.Vector3();
@@ -703,7 +843,7 @@ function updateEnv(dt) {
   // the clock only runs while you're driving
   const dh = (dt * MINUTES_PER_SECOND) / 60;
   gameHour = (gameHour + dh) % 24;
-  if (running && dh > 0) {
+  if (running && dh > 0 && !guest()) {
     const ch = weather.update(dh, today === 'monsoon');
     if (ch === 'rain' && !raining) setRain(true);
     if (ch === 'stop' && raining && today !== 'monsoon') setRain(false);
@@ -785,6 +925,7 @@ function frame(now) {
   last = now;
   if (running && paused) readInput();   // lets the controller's Start button unpause
   if (running && !paused) step(dt);
+  if (running) updateStand(dt);
   else if (!running) {
     // title screen: slow drone shot over the town
     orbit += dt * 0.05;
@@ -793,7 +934,7 @@ function frame(now) {
     camera.lookAt(0, 0, 0);
     camera.fov = 55; camera.updateProjectionMatrix();
   }
-  updateEnv(running && !paused ? dt : 0);
+  updateEnv(running && (!paused || mp.active) ? dt : 0);   // a stand shares one clock: it doesn't stop for your chaya break
   if (!paused) updateHumans(dt, camera);
   post.render(dt);
   checkGfx();
@@ -843,4 +984,4 @@ if (new URLSearchParams(location.search).has('dev')) {
 window.__ottam = { vfx, skies, post, player, traffic, peds, missions, world, rules, sound, hud, setRain, input, scene, camera };
 window.__ottam.setHour = (h) => { gameHour = h; };
 window.__ottam.weather = weather;
-window.__ottam.gfx = gfx; window.__ottam.frameFlatness = frameFlatness;
+window.__ottam.gfx = gfx; window.__ottam.mp = mp; window.__ottam.frameFlatness = frameFlatness;

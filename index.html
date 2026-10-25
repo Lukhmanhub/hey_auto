@@ -36,6 +36,9 @@
       <span class="ra-count" id="alert-n"></span>
     </div>
 
+    <div class="stand hud-g" id="stand" hidden><ol id="stand-list"></ol><div class="stand-hint" id="stand-hint"></div></div>
+    <div id="mp-tags"></div>
+    <div class="chatbox" id="chatbox" hidden><input id="chat-in" maxlength="80" autocomplete="off" placeholder="Say something to drivers nearby…" /><button id="chat-send" aria-label="Send">Send</button></div>
     <div class="map hud-g"><canvas id="minimap" width="220" height="220"></canvas></div>
     <div class="roadname hud-g" id="roadname"></div>
     <div class="clock hud-g" id="clock"><span class="wx" id="clock-wx"></span><b id="clock-t">07:30</b><small id="clock-ap">AM</small></div>
@@ -66,6 +69,10 @@
       <div class="t-acts">
         <button class="t-btn" data-act="pause" aria-label="Pause and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
       </div>
+      <div class="t-mp">
+        <button class="t-talk" data-mp="talk" aria-label="Hold to talk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span>TALK</span></button>
+        <button class="t-chat" data-mp="chat" aria-label="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+      </div>
       <div class="t-steer">
         <button data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
         <button data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -93,6 +100,8 @@
         <span><kbd>M</kbd></span><span>Mute</span>
         <span><kbd>Esc</kbd> <kbd>P</kbd></span><span>Pause & settings</span>
         <span><kbd>/</kbd></span><span>This help</span>
+        <span class="mp-only"><kbd>V</kbd> hold</span><span class="mp-only">Talk to drivers near you (stand)</span>
+        <span class="mp-only"><kbd>Enter</kbd></span><span class="mp-only">Chat with drivers near you (stand)</span>
       </div>
       <p class="tag small">Gamepad: left stick steer · RT drive · LT brake · A hand brake · B horn · X radio · Y camera</p>
     </div>
@@ -123,6 +132,40 @@
         <span><b>◀ ▶</b> steer</span><span><b>GAS</b> · <b>BRAKE</b> pedals (hold brake to reverse)</span><span><b>⏸</b> camera, radio, rain, time & settings</span>
       </div>
       <button id="start" disabled>Loading town…</button>
+      <button id="mp-open" class="mp-open" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.1c2.4-.2 4.3 1.3 4.8 4.4"/></svg>Ride with friends <small>up to 5 drivers</small></button>
+    </div>
+  </div>
+
+  <div id="lobby" class="overlay" hidden>
+    <div class="card lobby-card">
+      <div class="logo"><span class="ml">ഓട്ടോ സ്റ്റാൻഡ്</span><span class="en">Auto stand</span></div>
+      <p class="tag">Drive the same Kochi day with up to four friends. Same clock, same weather, your own fares. Pull up next to each other to chat and talk.</p>
+      <div id="lb-choose">
+        <label class="lb-name"><span>Your name on the stand</span><input id="lb-name" maxlength="14" autocomplete="off" spellcheck="false" /></label>
+        <div class="lb-two">
+          <div class="lb-box">
+            <h3>Start a stand</h3>
+            <p>You get a code and a link to send your friends.</p>
+            <button class="primary" id="lb-create">Create stand</button>
+          </div>
+          <div class="lb-box">
+            <h3>Join a stand</h3>
+            <p>Got a code from a friend? Type it in.</p>
+            <div class="lb-join"><input id="lb-code" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" /><button class="primary" id="lb-join">Join</button></div>
+          </div>
+        </div>
+      </div>
+      <div id="lb-room" hidden>
+        <div class="lb-codebar">
+          <div class="lb-code"><small>Stand code</small><b id="lb-codeval">·····</b></div>
+          <div class="lb-share"><button class="ghost" id="lb-copy">Copy link</button><button class="ghost" id="lb-sharebtn">Share</button></div>
+        </div>
+        <ul class="lb-list" id="lb-list"></ul>
+        <p class="lb-hint" id="lb-hint"></p>
+        <button class="primary lb-go" id="lb-go">Start shift together</button>
+      </div>
+      <p class="lb-err" id="lb-err" role="alert"></p>
+      <button class="lb-back" id="lb-back">← Back</button>
     </div>
   </div>
 
@@ -139,7 +182,7 @@
         <div class="set t-only"><span>Town</span><div class="seg seg-act"><button data-more="rain" id="p-rain">Rain</button><button data-more="hour">+1 hour</button><button data-more="mute" id="p-mute">Sound on</button></div></div>
         <div class="set"><span>Dialogue</span><div class="seg" data-set="lang"><button data-v="ml">മലയാളം</button><button data-v="mlmg">+ Manglish</button><button data-v="all">+ English</button></div></div>
       </div>
-      <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button></div>
+      <div class="pause-actions"><button id="resume" class="primary">Back on the road</button><button id="showhelp" class="ghost">Controls</button><button id="leave-stand" class="ghost mp-only">Leave stand</button></div>
       <p class="follow">Enjoying the ride? Follow me on <a href="https://www.instagram.com/lukhman.designs/" target="_blank" rel="noopener">Instagram @lukhman.designs</a></p>
     </div>
   </div>
