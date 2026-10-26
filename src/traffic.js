@@ -24,11 +24,15 @@ const TYPES = {
   jeep: { halfLen: 1.9, halfW: 0.85, max: 5, accel: 1.8 },
   elephant: { halfLen: 2.4, halfW: 1.1, max: 0.9, accel: 0.4 },
   // the rich kids: far too fast, straight through red lights
-  mini: { halfLen: 2.15, halfW: 0.92, max: 22, accel: 7 },
-  benz: { halfLen: 2.45, halfW: 0.94, max: 23, accel: 6.5 },
+  // real figures: JCW Countryman 0–100 in 5.4 s, E-Class 0–100 in 6.2 s, both braking at ~1 g, both let
+  // loose to 150 km/h (41.7 m/s)
+  mini: { halfLen: 2.22, halfW: 0.92, max: 41.7, accel: 5.1, brake: 10 },
+  benz: { halfLen: 2.47, halfW: 0.94, max: 41.7, accel: 4.5, brake: 10.5 },
 };
 // each tears up and down its own long two-way road, end to end, all day, hartal or not
 const RECKLESS = { mini: 5, benz: 'v5' };   // Marine Drive (row 5), Park Avenue (column 5)
+const LOOK = 130;        // how far ahead a 150 km/h driver has to watch to stop in time
+const PASS = 2 * LANE;   // sideways shift into the oncoming lane to overtake
 const shuttle = (road) => {
   const ids = [...Array(N + 1).keys()];
   const at = typeof road === 'number' ? (i) => [i, road] : (i) => [+road.slice(1), i];
@@ -186,6 +190,7 @@ export class Traffic {
       else if (type === 'benz') geo = benzGeometry();
       else { const [a, b, k] = BUSES[Math.floor(r() * BUSES.length)]; geo = busGeometry(a, b, k); c.gov = k; c.cols = [a, b]; }
       c.mesh = new THREE.Mesh(geo, c.reckless ? vcPaint : vcMat);
+      if (c.reckless) c.mesh.rotation.order = 'YXZ';   // heading last, so pitch and roll stay the car's own
       c.mesh.castShadow = true;
       if (!['cow', 'elephant', 'fish'].includes(type)) c.mesh.add(vehicleLights(c));
       if (type === 'bus') {
@@ -256,12 +261,14 @@ export class Traffic {
     if (c.state === 'lane') {
       c.pos.set(c.start[0] + c.f[0] * c.s, 0, c.start[1] + c.f[1] * c.s);
       c.heading = Math.atan2(c.f[0], c.f[1]);
+      if (c.side) { c.pos.x -= Math.cos(c.heading) * c.side; c.pos.z += Math.sin(c.heading) * c.side; }   // out to the right to pass
     } else {
       const { p0, p1, p2, t } = c.turn, u = 1 - t;
       c.pos.set(u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0], 0, u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]);
       const dx = 2 * u * (p1[0] - p0[0]) + 2 * t * (p2[0] - p1[0]);
       const dz = 2 * u * (p1[1] - p0[1]) + 2 * t * (p2[1] - p1[1]);
       if (dx * dx + dz * dz > 1e-4) c.heading = Math.atan2(dx, dz);
+      if (c.side) { c.pos.x -= Math.cos(c.heading) * c.side; c.pos.z += Math.sin(c.heading) * c.side; }
     }
   }
 
@@ -273,6 +280,30 @@ export class Traffic {
       c.mesh.position.z -= Math.sin(c.heading) * off;
     }
     c.mesh.rotation.y = c.heading;
+    if (c.reckless) {
+      // squat under power, dive under braking, lean into a lane change
+      c.mesh.rotation.x = Math.max(-0.045, Math.min(0.06, -(c.acc ?? 0) * 0.0055));
+      c.mesh.rotation.z = Math.max(-0.05, Math.min(0.05, (c.sideV ?? 0) * 0.012));
+    }
+  }
+
+  // the rich kid's driving: slow for the U-turn at the end of the road, and blast past anything slow
+  // through the oncoming lane whenever it's clear (and duck back in when it isn't)
+  drive(c, dt, oncoming, slowAhead, limit) {
+    const rev = c.next && c.next[0] === c.a[0] && c.next[1] === c.a[1];
+    const toEnd = c.state === 'lane' ? c.laneLen - c.s : Infinity;
+    if (rev) limit(Math.sqrt(36 + 2 * c.brake * 0.75 * Math.max(0, toEnd - 2)));
+    const roomy = !rev || toEnd > 90;
+    if (!c.ovt && slowAhead && oncoming > 160 && roomy && c.speed > 8) c.ovt = 1.2;
+    if (c.ovt) {
+      if (oncoming < 70 || !roomy) c.ovt = 0;                     // someone's coming: get back in
+      else if (!slowAhead) { c.ovt -= dt; if (c.ovt <= 0) c.ovt = 0; }   // clear of them: a moment more, then back in
+      else c.ovt = 1.2;
+    }
+    const want = c.ovt ? PASS : 0, side = c.side ?? 0;
+    const sv = Math.max(-5, Math.min(5, (want - side) * 4));
+    c.sideV = sv;
+    c.side = Math.abs(want - side) < 0.02 ? want : side + sv * dt;
   }
 
   canEnter(c, sig) {
@@ -302,7 +333,7 @@ export class Traffic {
       if (c.ghost > 0) c.ghost -= dt;
       const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
       let target = c.max;
-      let gap = Infinity;
+      let gap = Infinity, oncoming = Infinity, slowAhead = false;
       // cows amble, then stop dead in the lane for a while; the fish vendor and the jeep make noise
       c.timer -= dt;
       if (c.type === 'cow') { if (c.timer < 0) { c.grazing = !c.grazing; c.timer = c.grazing ? 6 + this.r() * 12 : 4 + this.r() * 8; } if (c.grazing) target = 0; }
@@ -322,7 +353,13 @@ export class Traffic {
         }
         if (c.ghost > 0) continue;
         const along = dx * fx + dz * fz;
-        if (along <= 0 || along > (c.reckless ? 40 : 22)) continue;
+        if (c.reckless && along > 0 && along < 170) {
+          const same = Math.cos(o.heading - c.heading);
+          const latL = (dx * fz - dz * fx) - (c.side ?? 0);           // across from our own lane's centre (+ = left)
+          if (same < -0.6 && Math.abs(latL + PASS) < 2.2) oncoming = Math.min(oncoming, along);
+          if (same > 0.6 && Math.abs(latL) < 1.6 && along < 45 && o.speed < c.speed * 0.85 + 1) slowAhead = true;
+        }
+        if (along <= 0 || along > (c.reckless ? LOOK : 22)) continue;
         const lat = Math.abs(dx * fz - dz * fx);
         if (lat > c.halfW + o.halfW + 0.4) continue;
         if (c.slot !== undefined && o.slot !== undefined && c.slot !== o.slot && along < 2.2) continue;   // riding abreast
@@ -334,12 +371,15 @@ export class Traffic {
         const dx = player.pos.x - c.pos.x, dz = player.pos.z - c.pos.z;
         const along = dx * fx + dz * fz;
         const lat = Math.abs(dx * fz - dz * fx);
-        if (along > 0 && along < (c.reckless ? 40 : 22) && lat < c.halfW + 1.1) {
+        if (c.reckless && along > 0 && along < 170 && Math.abs((dx * fz - dz * fx) - (c.side ?? 0) + PASS) < 2.2) oncoming = Math.min(oncoming, along);
+        if (along > 0 && along < (c.reckless ? LOOK : 22) && lat < c.halfW + 1.1) {
           const g = along - c.halfLen - 1.4;
           if (g < gap) { gap = g; byPlayer = true; }
         }
       }
-      if (gap < Infinity) target = Math.min(target, Math.max(0, (gap - 2) * 1.1));
+      // a fast car brakes on physics: the speed it can still shed in the gap it has
+      if (gap < Infinity) target = Math.min(target, c.reckless ? Math.sqrt(Math.max(0, 2 * c.brake * 0.8 * (gap - 3))) : Math.max(0, (gap - 2) * 1.1));
+      if (c.reckless) this.drive(c, dt, oncoming, slowAhead, (t2) => { target = Math.min(target, t2); });
       // a pack leader eases off when the others fall behind (a red light, a turn), so the pack regroups
       if (c.pack?.length) {
         let behind = 0;
@@ -349,7 +389,7 @@ export class Traffic {
       if (c.argue > 0) { c.argue -= dt; target = 0; }
 
       if (c.state === 'lane') {
-        if (!c.next && c.s > c.laneLen - 20) this.chooseNext(c);
+        if (!c.next && (c.reckless || c.s > c.laneLen - 20)) this.chooseNext(c);
         const sig = this.signalAt.get(key(c.b));
         const gate = sig ? c.laneLen - (STOP_LINE - TURN_IN) - c.halfLen : c.laneLen - c.halfLen * 0.5;
         if (c.s < gate + 0.3 && c.s > gate - 25 && c.next) {
@@ -362,8 +402,11 @@ export class Traffic {
       }
 
       const dv = target - c.speed;
-      c.speed += Math.max(-9 * dt, Math.min(c.accel * dt, dv));
+      const push = c.reckless ? c.accel * (1 - 0.65 * (c.speed / c.max) ** 2) : c.accel;   // air drag eats the pull at the top end
+      const v0 = c.speed;
+      c.speed += Math.max(-(c.brake ?? 9) * dt, Math.min(push * dt, dv));
       if (c.speed < 0) c.speed = 0;
+      if (c.reckless && dt > 0) c.acc = (c.acc ?? 0) + ((c.speed - v0) / dt - (c.acc ?? 0)) * Math.min(1, dt * 6);
 
       // honk if the player is blocking
       c.honkCd -= dt;

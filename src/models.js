@@ -638,32 +638,32 @@ export function miniGeometry() {
   return cached('mini', () => {
     const b = new Bucket();
     const body = '#5a6067', red = '#e0242f', glass = '#1b2229', clad = '#161616';
-    b.box(1.82, 0.6, 4.3, body, 0, 0.72, 0);                                       // body
-    b.box(1.78, 0.14, 1.05, body, 0, 1.06, 1.58, 0.07, 0, 0);                      // bonnet, nose down a touch
-    b.box(1.74, 0.5, 2.62, glass, 0, 1.31, -0.32);                                  // wrap-round glass
-    b.box(1.6, 0.52, 0.06, glass, 0, 1.3, 1.02, -0.62, 0, 0);                       // windscreen
-    b.box(1.5, 0.42, 0.06, glass, 0, 1.33, -1.68, 0.32, 0, 0);                      // tailgate glass
-    b.box(1.76, 0.09, 2.7, red, 0, 1.6, -0.36);                                     // red roof
+    b.box(1.84, 0.6, 4.44, body, 0, 0.72, 0);                                       // body
+    b.box(1.8, 0.14, 1.05, body, 0, 1.06, 1.66, 0.07, 0, 0);                      // bonnet, nose down a touch
+    b.box(1.74, 0.52, 2.66, glass, 0, 1.32, -0.34);                                  // wrap-round glass
+    b.box(1.6, 0.52, 0.06, glass, 0, 1.31, 1.04, -0.62, 0, 0);                       // windscreen
+    b.box(1.5, 0.42, 0.06, glass, 0, 1.33, -1.74, 0.32, 0, 0);                      // tailgate glass
+    b.box(1.78, 0.09, 2.74, red, 0, 1.6, -0.38);                                     // red roof
     for (const sx of [-0.62, 0.62]) b.box(0.05, 0.05, 2.2, '#0e0e0e', sx, 1.67, -0.36);  // roof rails
     for (const s of [-1, 1]) {
       b.box(0.04, 0.38, 0.5, red, s * 0.875, 1.33, -1.22);                          // red C-pillar flash
       b.box(0.16, 0.13, 0.2, red, s * 0.97, 1.16, 0.9);                             // red mirror caps
       b.box(0.05, 0.12, 2.3, clad, s * 0.92, 0.47, 0);                              // black sill
-      for (const sz of [-1.42, 1.42]) b.box(0.06, 0.32, 1.0, clad, s * 0.915, 0.82, sz);   // wheel-arch cladding
+      for (const sz of [-1.35, 1.35]) b.box(0.06, 0.32, 1.0, clad, s * 0.925, 0.82, sz);   // wheel-arch cladding
       b.box(0.04, 0.03, 0.22, '#7c8288', s * 0.915, 0.98, 0.25);                    // door handles
       b.box(0.04, 0.03, 0.22, '#7c8288', s * 0.915, 0.98, -0.85);
       // round Mini lamps: a black ring and a bright lens
-      b.add(Cyl(0.19, 0.19, 0.06, 18), '#111', s * 0.6, 0.97, 2.13, Math.PI / 2, 0, 0);
-      b.add(Cyl(0.14, 0.14, 0.08, 18), '#fff6dc', s * 0.6, 0.97, 2.14, Math.PI / 2, 0, 0);
-      b.box(0.05, 0.3, 0.06, red, s * 0.8, 0.6, 2.14);                              // JCW red bumper slats
-      b.box(0.14, 0.4, 0.06, '#9c0f16', s * 0.7, 1.0, -2.15);                       // tall rear lamps
+      b.add(Cyl(0.19, 0.19, 0.06, 18), '#111', s * 0.6, 0.97, 2.2, Math.PI / 2, 0, 0);
+      b.add(Cyl(0.14, 0.14, 0.08, 18), '#fff6dc', s * 0.6, 0.97, 2.21, Math.PI / 2, 0, 0);
+      b.box(0.05, 0.3, 0.06, red, s * 0.8, 0.6, 2.21);                              // JCW red bumper slats
+      b.box(0.14, 0.4, 0.06, '#9c0f16', s * 0.7, 1.0, -2.22);                       // tall rear lamps
     }
-    b.add(Cyl(0.32, 0.32, 0.06, 8), '#0d0d0d', 0, 0.68, 2.14, Math.PI / 2, Math.PI / 8, 0);   // octagonal grille
-    b.box(0.5, 0.05, 0.07, red, 0, 0.74, 2.17);                                     // red grille bar
-    b.box(1.84, 0.2, 0.12, clad, 0, 0.44, 2.13);                                    // front apron
-    b.box(1.84, 0.22, 0.12, clad, 0, 0.46, -2.13);                                  // rear apron
-    b.box(0.46, 0.13, 0.03, '#f2f2f2', 0, 0.62, -2.2);                              // plate
-    for (const sx of [-0.86, 0.86]) for (const sz of [-1.42, 1.42]) sportWheel(b, sx, 0.37, sz, 0.37, 0.26, '#1c1c1c', red);
+    b.add(Cyl(0.32, 0.32, 0.06, 8), '#0d0d0d', 0, 0.68, 2.21, Math.PI / 2, Math.PI / 8, 0);   // octagonal grille
+    b.box(0.5, 0.05, 0.07, red, 0, 0.74, 2.24);                                     // red grille bar
+    b.box(1.86, 0.2, 0.12, clad, 0, 0.44, 2.2);                                    // front apron
+    b.box(1.86, 0.22, 0.12, clad, 0, 0.46, -2.2);                                  // rear apron
+    b.box(0.46, 0.13, 0.03, '#f2f2f2', 0, 0.62, -2.27);                              // plate
+    for (const sx of [-0.87, 0.87]) for (const sz of [-1.346, 1.346]) sportWheel(b, sx, 0.37, sz, 0.37, 0.26, '#1c1c1c', red);
     return b.merge();
   });
 }
@@ -674,16 +674,16 @@ export function benzGeometry() {
   return cached('benz', () => {
     const b = new Bucket();
     const body = '#16181b', glass = '#1a2128', chrome = '#e4e7ea';
-    b.box(1.86, 0.58, 4.9, body, 0, 0.68, 0);                                       // body
+    b.box(1.88, 0.58, 4.94, body, 0, 0.68, 0);                                       // body
     b.box(1.8, 0.12, 1.65, body, 0, 0.99, 1.6, 0.05, 0, 0);                         // long bonnet
     b.box(1.76, 0.1, 0.95, body, 0, 1.0, -1.98, -0.04, 0, 0);                       // boot lid
-    b.box(1.64, 0.36, 2.0, glass, 0, 1.14, -0.3);                                   // cabin glass, low and sleek
+    b.box(1.64, 0.4, 2.0, glass, 0, 1.16, -0.3);                                   // cabin glass, low and sleek
     b.box(1.56, 0.62, 0.06, glass, 0, 1.12, 1.0, -1.08, 0, 0);                      // steeply raked windscreen
     b.box(1.5, 0.56, 0.06, glass, 0, 1.12, -1.55, 1.05, 0, 0);                      // fastback rear window
-    b.box(1.56, 0.07, 1.45, body, 0, 1.34, -0.3);                                   // roof
+    b.box(1.56, 0.07, 1.45, body, 0, 1.4, -0.3);                                    // roof (1.47 m tall)
     for (const s of [-1, 1]) {
       b.box(0.03, 0.03, 2.35, chrome, s * 0.84, 0.99, -0.3);                        // chrome window line
-      b.box(0.03, 0.025, 1.6, chrome, s * 0.81, 1.31, -0.3);                        // roof-line chrome
+      b.box(0.03, 0.025, 1.6, chrome, s * 0.81, 1.37, -0.3);                        // roof-line chrome
       b.box(0.14, 0.12, 0.2, body, s * 0.97, 1.08, 0.75);                           // mirrors
       for (const sz of [0.35, -0.8]) b.box(0.04, 0.03, 0.2, chrome, s * 0.94, 0.9, sz);   // door handles
       b.box(0.44, 0.1, 0.06, '#eef3ff', s * 0.6, 0.86, 2.42, 0, s * -0.18, 0);      // slim headlamps
@@ -703,7 +703,7 @@ export function benzGeometry() {
     for (let k = 0; k < 3; k++) b.box(0.016, 0.1, 0.02, chrome, 0, 0.72, 2.49, 0, 0, (k / 3) * Math.PI * 2).translate(Math.sin((k / 3) * Math.PI * 2) * -0.05, Math.cos((k / 3) * Math.PI * 2) * 0.05, 0);
     b.box(1.88, 0.2, 0.12, '#0a0a0a', 0, 0.45, 2.44);                               // front apron
     b.box(0.46, 0.13, 0.03, '#f2f2f2', 0, 0.6, -2.47);                              // plate
-    for (const sx of [-0.88, 0.88]) for (const sz of [-1.5, 1.5]) sportWheel(b, sx, 0.35, sz, 0.35, 0.24, '#b8bcc0', null);
+    for (const sx of [-0.88, 0.88]) for (const sz of [-1.48, 1.48]) sportWheel(b, sx, 0.35, sz, 0.35, 0.24, '#b8bcc0', null);
     return b.merge();
   });
 }

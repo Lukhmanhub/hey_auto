@@ -803,6 +803,16 @@ function step(dt) {
   emitSmoke(dt);
   traffic.update(dt, t, player, events);
   traffic.collidePlayer(player, events);
+  // the rich kids announce themselves: a whoosh as one tears past you
+  for (const c of traffic.cars) {
+    if (!c.reckless || c.speed < 20 || t - (c.flyAt ?? -9) < 2.5) continue;
+    const d = c.pos.distanceTo(player.pos);
+    if (d > 16) continue;
+    c.flyAt = t;
+    const s = sound.spatial(c.pos.x, c.pos.z, player, 8);
+    sound.flyby(s.gain * (c.speed / 41.7), s.pan, c.type === 'benz');
+    haptic(0.25, 90);
+  }
   peds.update(dt, player, events);
   rules.update(dt, player, t);
   missions.update(dt, t);

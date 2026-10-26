@@ -350,6 +350,24 @@ export class Sound {
     const pattern = bus ? [[0, 0.18], [230, 0.12], [400, 0.5]] : [[0, 0.22], [260, 0.3]];
     for (const [ms, dur] of pattern) setTimeout(() => this.beep([base, base * 1.26], dur, vol, 'square', 1400, pan), ms);
   }
+  // a car ripping past at 150 km/h: a rush of wind and an engine note that drops as it goes (doppler)
+  flyby(vol = 1, pan = 0, deep = false) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.out(pan), v = Math.min(1, vol);
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(1800, t); bp.frequency.exponentialRampToValueAtTime(380, t + 0.9);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.32 * v, t + 0.22); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    src.connect(bp).connect(g).connect(out); src.start(t); src.stop(t + 1.2);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    const f = deep ? 92 : 128;
+    o.frequency.setValueAtTime(f * 1.25, t); o.frequency.exponentialRampToValueAtTime(f * 0.78, t + 0.9);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const og = ctx.createGain(); og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.09 * v, t + 0.2); og.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    o.connect(lp).connect(og).connect(out); o.start(t); o.stop(t + 1.1);
+  }
   crash(intensity = 1) {
     if (!this.ctx) return;
     const ctx = this.ctx, t = ctx.currentTime;
