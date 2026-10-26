@@ -5,7 +5,19 @@
 let extra = {};
 export const setEnv = (e) => { extra = e || {}; };
 export const env = (k) => extra[k] ?? globalThis.process?.env?.[k];
-const creds = () => ({ url: env('KV_REST_API_URL') || env('UPSTASH_REDIS_REST_URL'), token: env('KV_REST_API_TOKEN') || env('UPSTASH_REDIS_REST_TOKEN') });
+// values pasted into a dashboard often bring quotes, a `NAME=` prefix, spaces or a line break along
+const clean = (v) => String(v ?? '').replace(/[\s\u200b-\u200d\ufeff]+/g, '').replace(/^[A-Z_]+=/, '').replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\/+$/, '');
+const creds = () => ({ url: clean(env('KV_REST_API_URL') || env('UPSTASH_REDIS_REST_URL')), token: clean(env('KV_REST_API_TOKEN') || env('UPSTASH_REDIS_REST_TOKEN')) });
+// what's wrong with the connection settings, without giving the secret away
+export function credsCheck() {
+  const { url, token } = creds();
+  let host = '';
+  try { host = new URL(url).host; } catch { /* not a URL */ }
+  return {
+    url: url ? (host ? `ok (${host})` : 'not a web address') : 'missing (add UPSTASH_REDIS_REST_URL)',
+    token: token ? `${token.length} characters${/[^\x21-\x7e]/.test(token) ? ', has spaces/line breaks/odd characters inside' : ''}` : 'missing',
+  };
+}
 export const isConfigured = () => { const c = creds(); return !!(c.url && c.token); };
 
 // Run several commands in one round trip; returns each command's result.

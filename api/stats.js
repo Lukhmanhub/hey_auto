@@ -1,6 +1,6 @@
 // Read side for the analytics dashboard (analytics.html). If ANALYTICS_KEY is set on Vercel, the
 // dashboard must send it (it asks once and remembers it); without it the numbers are open to anyone.
-import { pipeline, dayKey, json, isConfigured, env } from './_store.js';
+import { pipeline, dayKey, json, isConfigured, env, credsCheck } from './_store.js';
 
 // the dashboard page is served from lukhmandesigns.com, the function from the game's own host
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'x-key' };
@@ -58,6 +58,6 @@ export async function GET(request) {
       sessions,
     }, 200, CORS);
   } catch (err) {
-    return json({ error: String(err.message) }, 500, CORS);
+    return json({ error: String(err.message), settings: credsCheck() }, 500, CORS);
   }
 }
