@@ -7,6 +7,7 @@ import { Bucket, wallBox, noiseTexture, signTexture, Colliders, FONT_ML, FONT_PA
 import { buildProps } from './props.js';
 import { vcMat, palmGeometry, bananaGeometry, busGeometry, carGeometry, houseboatGeometry } from './models.js';
 import { Posters, PosterPair } from './posters.js';
+import { buildBillboards } from './billboards.js';
 import { FILMS, POLITICAL, ADS, PARTIES, wallSlogan, paintedHotel } from './prints.js';
 import { makeMaterials, TexBucket } from './materials.js';
 
@@ -1435,10 +1436,13 @@ export function buildWorld(scene) {
     return alley ? 'alley' : 'yard';
   }
 
+  // after everything solid is placed, so the hoardings can find genuinely open ground
+  const billboards = buildBillboards(scene, col, { x: gx(3) + 1.75, z: gx(2) + 22, dx: 0, dz: 1 });
+
   function setRain() { /* wetness is driven smoothly through setWet() */ }
   function setWet(w) { mats.setWet(w); puddleMat.opacity = 0.85 * w; puddles.visible = w > 0.02; }
   function setWind(w) { swayU.uWind.value = w; }
-  function setNight(n) { mats.setNight(n); for (const m of signMats) m.emissiveIntensity = n * 0.4; props.setNight?.(n); }
+  function setNight(n) { mats.setNight(n); for (const m of signMats) m.emissiveIntensity = n * 0.4; props.setNight?.(n); billboards.setNight(n); }
 
   function update(t, dt) {
     for (const s of signals) for (const axis of ['x', 'z']) {
@@ -1450,5 +1454,5 @@ export function buildWorld(scene) {
     props.update(t, dt);
   }
 
-  return { setSkyline, metroX, setNight, props, shops, posterMeshes, electionGroup, setWind, setWet, mats, posterSpots: posters.spots, politicalSpots: politics.spots, colliders: col, zoneAt, alleys, signals, lmSpots, setRain, update, canal: [zc0, zc1] };
+  return { billboards, setSkyline, metroX, setNight, props, shops, posterMeshes, electionGroup, setWind, setWet, mats, posterSpots: posters.spots, politicalSpots: politics.spots, colliders: col, zoneAt, alleys, signals, lmSpots, setRain, update, canal: [zc0, zc1] };
 }
