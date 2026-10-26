@@ -826,7 +826,7 @@ function step(dt) {
       const c = e.car;
       // the rich kids never get a challan, and they let you know why
       if (c.reckless) {
-        setTimeout(() => hud.bubble(pick(DRIVER_HIT[c.type]), WHO[c.type], carTarget(c), carH(c), 'driver', 4), 350);
+        setTimeout(() => hud.bubble(pick(DRIVER_HIT[c.type]), WHO[c.type], carTarget(c), carH(c), 'driver', 3.8), 700);
         if (!daddyCalled) { daddyCalled = true; setTimeout(() => { hud.toast('info', 'No case filed', 'Daddy made one phone call'); daddyCalled = false; }, 4200); }
       } else {
         rules.fire('crash');
@@ -870,8 +870,9 @@ function step(dt) {
       sound.crash(Math.min(9, e.impact / 4) * s.gain);
       if (s.dist < 25) haptic(0.5, 200);
       // the rich kid shouts it out of the window on the way past; the victim yells after them
-      if (t - (rich.saidAt ?? -99) > 5) { rich.saidAt = t; setTimeout(() => hud.bubble(pick(DRIVER_HIT[rich.type]), WHO[rich.type], carTarget(rich), carH(rich), 'driver', 3.2), 200); }
-      setTimeout(() => hud.bubble(pick(RICH_VICTIM), WHO[victim.type] ?? 'Driver', carTarget(victim), carH(victim), 'driver', 3.4), 1300);
+      // he stops just long enough to say it (the car has skidded to a halt by then), the victim answers
+      if (t - (rich.saidAt ?? -99) > 4) { rich.saidAt = t; setTimeout(() => hud.bubble(pick(DRIVER_HIT[rich.type]), WHO[rich.type], carTarget(rich), carH(rich), 'driver', 3.6), 900); }
+      setTimeout(() => hud.bubble(pick(RICH_VICTIM), WHO[victim.type] ?? 'Driver', carTarget(victim), carH(victim), 'driver', 3.2), 4300);
       if (t - newsAt > 25) { newsAt = t; setTimeout(() => hud.toast('warn', `${rich.type === 'mini' ? 'Mini Cooper' : 'Benz'} hit a ${VICTIM[victim.type] ?? 'vehicle'}`, `${rich.type === 'mini' ? 'Marine Drive' : 'Park Avenue'} · didn’t even stop`), 900); }
     }
     if (e.type === 'aibump' && e.a.pos.distanceTo(player.pos) < 80) {

@@ -311,6 +311,7 @@ export class Traffic {
     o.kick = { x: kx, z: kz, yaw: side * (0.5 + r() * 0.9) * Math.min(1.6, impact / 22), roll: light ? side * 1.35 : 0, t: 0 };
     o.hitCd = 8; o.argue = 7.5; o.ghost = 10; o.speed = 0;
     c.speed *= light ? 0.9 : 0.78;
+    c.halt = 4.6;                 // skids to a stop, leans out to say his piece, then floors it again
     events.push({ type: 'richhit', rich: c, victim: o, impact });
   }
   kicked(o, dt) {
@@ -413,6 +414,7 @@ export class Traffic {
       // the rich kids don't brake for anyone: whatever is in the way gets hit (see ram)
       if (gap < Infinity && !c.reckless) target = Math.min(target, Math.max(0, (gap - 2) * 1.1));
       if (c.reckless) this.drive(c, dt, oncoming, slowAhead, (t2) => { target = Math.min(target, t2); });
+      if (c.halt > 0) { c.halt -= dt; target = 0; }
       // a pack leader eases off when the others fall behind (a red light, a turn), so the pack regroups
       if (c.pack?.length) {
         let behind = 0;
@@ -438,7 +440,7 @@ export class Traffic {
       const dv = target - c.speed;
       const push = c.reckless ? c.accel * (1 - 0.65 * (c.speed / c.max) ** 2) : c.accel;   // air drag eats the pull at the top end
       const v0 = c.speed;
-      c.speed += Math.max(-(c.brake ?? 9) * dt, Math.min(push * dt, dv));
+      c.speed += Math.max(-(c.halt > 0 ? 16 : c.brake ?? 9) * dt, Math.min(push * dt, dv));   // a hit: locked-wheel skid
       if (c.speed < 0) c.speed = 0;
       if (c.reckless && dt > 0) c.acc = (c.acc ?? 0) + ((c.speed - v0) / dt - (c.acc ?? 0)) * Math.min(1, dt * 6);
 
@@ -495,6 +497,7 @@ export class Traffic {
           player.speed = (pf.x * fx + pf.z * fz) * c.speed * 0.45;
           player.rammedCd = 1.5;
           c.speed *= 0.85;
+          c.halt = 4.6;
           events.push({ type: 'crash', impact: rv, car: c, rammed: true });
           player.crashCd = 1.2;
         }
