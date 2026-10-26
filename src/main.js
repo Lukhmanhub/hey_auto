@@ -19,7 +19,7 @@ import * as stats from './analytics.js';
 import { Multiplayer, HEAR, micHelp } from './multiplayer.js';
 import { initLobby } from './lobby.js';
 import { viewSize } from './view.js';
-import { pick, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
+import { pick, RICH_VICTIM, DRIVER_HIT, HONK, PED_HIT, PED_HIT_FOOTPATH, BYSTANDER, NEAR_MISS, ARGUMENT, FISH_CALL, ANNOUNCE, HUMP, DAY_INTRO } from './dialogues.js';
 
 const canvas = document.getElementById('game');
 // AA comes from the composer's multisampling, so the default framebuffer stays lean
@@ -770,7 +770,8 @@ function emitSmoke(dt) {
 }
 
 // ---------- Street reactions (Malayalam dialogue) ----------
-let daddyCalled = false;
+let daddyCalled = false, newsAt = -99;
+const VICTIM = { scooter: 'scooter', auto: 'auto', car: 'car', bus: 'bus', taxi: 'taxi', tempo: 'tempo', goods: 'goods auto', van: 'school van', fish: 'fish vendor’s cycle', cow: 'cow', jeep: 'party jeep' };
 const WHO = { mini: 'Mini Cooper payyan', benz: 'Judge’s son', car: 'Car driver', bus: 'Bus driver', auto: 'Auto chettan', scooter: 'Scooter rider', taxi: 'Taxi driver', tempo: 'Tempo driver', goods: 'Goods auto', van: 'School van driver', fish: 'Fish vendor', jeep: 'Party worker', cow: 'Cow owner', elephant: 'Mahout' };
 const carH = (c) => ({ bus: 3.7, elephant: 5.6, tempo: 2.8, jeep: 2.8, benz: 2.0 }[c.type] ?? 2.3);
 const carTarget = (c) => () => c.pos;
@@ -798,11 +799,11 @@ function step(dt) {
   if (bump) {
     sound.crash(bump.impact);
     haptic(bump.impact / 8, 160, bump.impact > 6 ? 0.5 : 0);
-    if (bump.impact > 4.5) rules.fire('bump');
+    if (bump.impact > 4.5 && !(player.rammedCd > 0)) rules.fire('bump');   // not your fault when a Benz just threw you there
   }
   emitSmoke(dt);
   traffic.update(dt, t, player, events);
-  traffic.collidePlayer(player, events);
+  traffic.collidePlayer(player, events, dt);
   // the rich kids announce themselves: a whoosh as one tears past you
   for (const c of traffic.cars) {
     if (!c.reckless || c.speed < 20 || t - (c.flyAt ?? -9) < 2.5) continue;
@@ -863,6 +864,15 @@ function step(dt) {
       const s = sound.spatial(e.dog.group.position.x, e.dog.group.position.z, player, 12);
       sound.bark(s.gain, s.pan);
       if (e.hit) { haptic(0.3, 120); sound.crash(1); }
+    }
+    if (e.type === 'richhit' && e.victim.pos.distanceTo(player.pos) < 140) {
+      const { rich, victim } = e, s = sound.spatial(victim.pos.x, victim.pos.z, player, 20);
+      sound.crash(Math.min(9, e.impact / 4) * s.gain);
+      if (s.dist < 25) haptic(0.5, 200);
+      // the rich kid shouts it out of the window on the way past; the victim yells after them
+      if (t - (rich.saidAt ?? -99) > 5) { rich.saidAt = t; setTimeout(() => hud.bubble(pick(DRIVER_HIT[rich.type]), WHO[rich.type], carTarget(rich), carH(rich), 'driver', 3.2), 200); }
+      setTimeout(() => hud.bubble(pick(RICH_VICTIM), WHO[victim.type] ?? 'Driver', carTarget(victim), carH(victim), 'driver', 3.4), 1300);
+      if (t - newsAt > 25) { newsAt = t; setTimeout(() => hud.toast('warn', `${rich.type === 'mini' ? 'Mini Cooper' : 'Benz'} hit a ${VICTIM[victim.type] ?? 'vehicle'}`, `${rich.type === 'mini' ? 'Marine Drive' : 'Park Avenue'} · didn’t even stop`), 900); }
     }
     if (e.type === 'aibump' && e.a.pos.distanceTo(player.pos) < 80) {
       const s = sound.spatial(e.a.pos.x, e.a.pos.z, player);

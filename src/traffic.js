@@ -280,6 +280,13 @@ export class Traffic {
       c.mesh.position.z -= Math.sin(c.heading) * off;
     }
     c.mesh.rotation.y = c.heading;
+    if (c.kick) {
+      const a = this.kickAmount(c.kick);
+      c.mesh.position.x += c.kick.x * a; c.mesh.position.z += c.kick.z * a;
+      c.mesh.rotation.y += c.kick.yaw * a;
+      c.mesh.rotation.z = c.kick.roll * a;
+      if (c.kick.roll) c.mesh.position.y = Math.abs(Math.sin(c.kick.roll * a)) * 0.22;
+    } else if (!c.reckless && c.mesh.rotation.z) { c.mesh.rotation.z = 0; c.mesh.position.y = 0; }
     if (c.reckless) {
       // squat under power, dive under braking, lean into a lane change
       c.mesh.rotation.x = Math.max(-0.045, Math.min(0.06, -(c.acc ?? 0) * 0.0055));
@@ -287,20 +294,44 @@ export class Traffic {
     }
   }
 
-  // the rich kid's driving: slow for the U-turn at the end of the road, and blast past anything slow
-  // through the oncoming lane whenever it's clear (and duck back in when it isn't)
+  // a 150 km/h car going straight through whatever is in its lane: the victim is flung aside and spun
+  // (a scooter goes over on its side), the rich car loses a little speed and carries on
+  ram(c, o, dx, dz, fx, fz, events) {
+    if (o.hitCd > 0 || o.type === 'elephant') return;
+    const along = dx * fx + dz * fz, lat = dx * fz - dz * fx;
+    if (Math.abs(along) > c.halfLen + o.halfLen * 0.7 || Math.abs(lat) > c.halfW + o.halfW * 0.85) return;
+    const ofx = Math.sin(o.heading), ofz = Math.cos(o.heading);
+    const impact = Math.abs(c.speed - o.speed * (ofx * fx + ofz * fz));
+    if (impact < 4) return;
+    const side = lat >= 0 ? 1 : -1, r = this.r;
+    // shoved forward and out of the lane, away from the side it was struck on
+    const lx = fz, lz = -fx, mag = Math.min(7, 1.2 + impact * 0.16);
+    const kx = (fx * 0.75 + lx * side * 0.65) * mag, kz = (fz * 0.75 + lz * side * 0.65) * mag;
+    const light = o.type === 'scooter' || o.type === 'fish';
+    o.kick = { x: kx, z: kz, yaw: side * (0.5 + r() * 0.9) * Math.min(1.6, impact / 22), roll: light ? side * 1.35 : 0, t: 0 };
+    o.hitCd = 8; o.argue = 7.5; o.ghost = 10; o.speed = 0;
+    c.speed *= light ? 0.9 : 0.78;
+    events.push({ type: 'richhit', rich: c, victim: o, impact });
+  }
+  kicked(o, dt) {
+    const k = o.kick;
+    k.t += dt;
+    if (o.hitCd > 0) o.hitCd -= dt;
+    if (k.t > 8.5) { o.kick = null; return; }
+  }
+  kickAmount(k) {
+    if (k.t < 0.35) { const u = k.t / 0.35; return 1 - (1 - u) * (1 - u); }   // flung, decelerating
+    if (k.t < 7) return 1;                                                     // sits there, wrecked
+    return Math.max(0, 1 - (k.t - 7) / 1.5);                                   // limps back into the lane
+  }
+
+  // the rich kid's driving: flat out, only lifting to swing round at the end of the road
   drive(c, dt, oncoming, slowAhead, limit) {
     const rev = c.next && c.next[0] === c.a[0] && c.next[1] === c.a[1];
     const toEnd = c.state === 'lane' ? c.laneLen - c.s : Infinity;
     if (rev) limit(Math.sqrt(36 + 2 * c.brake * 0.75 * Math.max(0, toEnd - 2)));
-    const roomy = !rev || toEnd > 90;
-    if (!c.ovt && slowAhead && oncoming > 160 && roomy && c.speed > 8) c.ovt = 1.2;
-    if (c.ovt) {
-      if (oncoming < 70 || !roomy) c.ovt = 0;                     // someone's coming: get back in
-      else if (!slowAhead) { c.ovt -= dt; if (c.ovt <= 0) c.ovt = 0; }   // clear of them: a moment more, then back in
-      else c.ovt = 1.2;
-    }
-    const want = c.ovt ? PASS : 0, side = c.side ?? 0;
+    // no overtaking, no swerving: it holds its lane and goes through whatever is in it
+    const want = 0, side = c.side ?? 0;
     const sv = Math.max(-5, Math.min(5, (want - side) * 4));
     c.sideV = sv;
     c.side = Math.abs(want - side) < 0.02 ? want : side + sv * dt;
@@ -344,8 +375,9 @@ export class Traffic {
         if (o === c) continue;
         const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z;
         // two AI vehicles touching (usually after a deadlock break) → they stop and argue
+        if (c.reckless) { this.ram(c, o, dx, dz, fx, fz, events); }
         const touch = Math.min(c.halfLen, o.halfLen) + 0.5;
-        if (dx * dx + dz * dz < touch * touch && c.speed + o.speed > 2.5 && !(c.bumpCd > 0) && !(o.bumpCd > 0)) {
+        if (!c.reckless && !o.reckless && dx * dx + dz * dz < touch * touch && c.speed + o.speed > 2.5 && !(c.bumpCd > 0) && !(o.bumpCd > 0)) {
           c.argue = o.argue = 5;
           c.bumpCd = o.bumpCd = 40;
           c.ghost = 8;
@@ -378,7 +410,8 @@ export class Traffic {
         }
       }
       // a fast car brakes on physics: the speed it can still shed in the gap it has
-      if (gap < Infinity) target = Math.min(target, c.reckless ? Math.sqrt(Math.max(0, 2 * c.brake * 0.8 * (gap - 3))) : Math.max(0, (gap - 2) * 1.1));
+      // the rich kids don't brake for anyone: whatever is in the way gets hit (see ram)
+      if (gap < Infinity && !c.reckless) target = Math.min(target, Math.max(0, (gap - 2) * 1.1));
       if (c.reckless) this.drive(c, dt, oncoming, slowAhead, (t2) => { target = Math.min(target, t2); });
       // a pack leader eases off when the others fall behind (a red light, a turn), so the pack regroups
       if (c.pack?.length) {
@@ -387,6 +420,7 @@ export class Traffic {
         if (behind > 14 && behind < 70) target = Math.min(target, 2.5);
       }
       if (c.argue > 0) { c.argue -= dt; target = 0; }
+      if (c.kick) this.kicked(c, dt);
 
       if (c.state === 'lane') {
         if (!c.next && (c.reckless || c.s > c.laneLen - 20)) this.chooseNext(c);
@@ -429,8 +463,9 @@ export class Traffic {
   }
 
   // Treat each vehicle as a capsule along its heading; push the player out.
-  collidePlayer(player, events) {
+  collidePlayer(player, events, dt = 0.016) {
     const pr = 1.0;
+    if (player.rammedCd > 0) player.rammedCd -= dt;
     const pf = player.forward();
     for (const c of this.cars) {
       const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
@@ -449,6 +484,22 @@ export class Traffic {
       const rvx = pf.x * player.speed - fx * c.speed, rvz = pf.z * player.speed - fz * c.speed;
       const impact = Math.abs(rvx * nx + rvz * nz);
       const dot = pf.x * nx + pf.z * nz;
+      if (c.reckless) {
+        // it doesn't stop for you either: the auto is shoved along and spun, the rich car barely slows
+        const rv = Math.abs(c.speed - player.speed * (pf.x * fx + pf.z * fz));
+        if (rv > 4 && !(player.rammedCd > 0)) {
+          const side = (dx * fz - dz * fx) >= 0 ? 1 : -1;
+          player.pos.x += (fx * 0.6 + nx) * Math.min(3, rv * 0.08);
+          player.pos.z += (fz * 0.6 + nz) * Math.min(3, rv * 0.08);
+          player.heading += side * Math.min(1.1, 0.25 + rv * 0.02);
+          player.speed = (pf.x * fx + pf.z * fz) * c.speed * 0.45;
+          player.rammedCd = 1.5;
+          c.speed *= 0.85;
+          events.push({ type: 'crash', impact: rv, car: c, rammed: true });
+          player.crashCd = 1.2;
+        }
+        continue;
+      }
       if (player.speed * dot < 0) player.speed *= 0.35;
       c.speed *= 0.5;
       if (impact > 2.2 && (player.crashCd ?? 0) <= 0) {

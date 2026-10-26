@@ -94,6 +94,14 @@ Object.assign(DRIVER_HIT, {
   ],
 });
 
+// what you shout after a rich kid who hit you and just drove off
+export const RICH_VICTIM = [
+  L('നിർത്തെടാ! ഇടിച്ചിട്ട് പോകുന്നോ?', 'Nirtheda! Idichittu pokunno?', 'Stop! You hit me and just drive off?'),
+  L('അയ്യോ! ആരെങ്കിലും ആ നമ്പർ നോക്ക്!', 'Ayyo! Aarenkilum aa number nokku!', 'Ayyo! Someone get that number!'),
+  L('പണക്കാരന്റെ മോനാ, കേസ് ഒന്നും ഉണ്ടാവില്ല...', 'Panakkaarante monaa, case onnum undaavilla...', "Rich man's son. There won't be any case..."),
+  L('പോലീസിനെ വിളിക്ക്! ... ഓ, അവർ അവന്റെ ആളാ.', 'Policine vilikku! ... O, avar avante aalaa.', "Call the police! ... Oh, they're on his side."),
+];
+
 // street calls and announcements
 export const FISH_CALL = [
   L('മീനേ... മത്തി, അയല, ചാള!', 'Meene... mathi, ayala, chaala!', 'Fish! Sardine, mackerel!'),
