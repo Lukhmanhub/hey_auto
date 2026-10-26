@@ -3,7 +3,7 @@ import { N, B, LANE, gx, edgeAllowed, mulberry32 } from './config.js';
 import {
   carGeometry, busGeometry, scooterGeometry, autoGeometry, vcMat, autoBackDecals, AUTO_NAMES, randomPlate,
   busDecals, BUS_NAMES, conductorGeometry, elephantGeometry, cowGeometry, fishCycleGeometry, ambassadorGeometry,
-  tempoGeometry, goodsAutoGeometry, schoolVanGeometry, jeepGeometry,
+  tempoGeometry, goodsAutoGeometry, schoolVanGeometry, jeepGeometry, miniGeometry, benzGeometry, vcPaint,
 } from './models.js';
 import { PARTIES } from './prints.js';
 
@@ -23,6 +23,16 @@ const TYPES = {
   cow: { halfLen: 1.2, halfW: 0.5, max: 0.6, accel: 0.5 },
   jeep: { halfLen: 1.9, halfW: 0.85, max: 5, accel: 1.8 },
   elephant: { halfLen: 2.4, halfW: 1.1, max: 0.9, accel: 0.4 },
+  // the rich kids: far too fast, straight through red lights
+  mini: { halfLen: 2.15, halfW: 0.92, max: 22, accel: 7 },
+  benz: { halfLen: 2.45, halfW: 0.94, max: 23, accel: 6.5 },
+};
+// each tears up and down its own long two-way road, end to end, all day, hartal or not
+const RECKLESS = { mini: 5, benz: 'v5' };   // Marine Drive (row 5), Park Avenue (column 5)
+const shuttle = (road) => {
+  const ids = [...Array(N + 1).keys()];
+  const at = typeof road === 'number' ? (i) => [i, road] : (i) => [+road.slice(1), i];
+  return [...ids, ...ids.slice(1, -1).reverse()].map(at);
 };
 // which day events each type appears on (default: every day except hartal thins traffic out)
 const ONLY = { jeep: 'election', elephant: 'festival' };
@@ -107,6 +117,7 @@ export class Traffic {
     // Pooram procession: elephants walk a fixed loop round the temple block, nose to tail
     const loop = [[2, 6], [3, 6], [3, 7], [2, 7]];
     ['#d81b60', '#1e88e5', '#f2c94c'].forEach((parasol, k) => this.spawn('elephant', null, { loop, k, parasol }));
+    for (const [type, road] of Object.entries(RECKLESS)) this.spawn(type, null, { loop: shuttle(road), k: 0, reckless: true });
     this.all = this.cars;
     this.setDay('normal');
   }
@@ -125,6 +136,7 @@ export class Traffic {
     const r = mulberry32(kind.length * 131);
     for (const c of this.all) {
       let on = !ONLY[c.type] || ONLY[c.type] === kind;
+      if (c.reckless) { c.active = true; c.mesh.visible = true; continue; }
       if (kind === 'hartal' && !['cow', 'fish'].includes(c.type)) on = r() < 0.12;        // shutters down, roads empty
       if (kind === 'monsoon' && c.type === 'fish') on = false;
       c.active = on; c.mesh.visible = on;
@@ -145,7 +157,8 @@ export class Traffic {
       } else if (opts.loop) {
         c.loop = opts.loop; c.li = 0;
         this.setLane(c, opts.loop[0], opts.loop[1]);
-        c.s = c.laneLen - 6 - opts.k * 6.5;
+        c.s = opts.reckless ? 10 : c.laneLen - 6 - opts.k * 6.5;
+        if (opts.reckless) c.reckless = true;
       } else {
         const ai = Math.floor(r() * (N + 1)), aj = Math.floor(r() * (N + 1));
         const nb = neighbors(ai, aj).filter(([bi, bj]) => edgeAllowed(ai, aj, bi, bj));
@@ -169,8 +182,10 @@ export class Traffic {
       else if (type === 'cow') geo = cowGeometry(r() < 0.6 ? '#e8e2d6' : '#7a5232');
       else if (type === 'jeep') { c.party = PARTIES[Math.floor(r() * PARTIES.length)]; geo = jeepGeometry(c.party.col); }
       else if (type === 'elephant') geo = elephantGeometry(opts.parasol);
+      else if (type === 'mini') geo = miniGeometry();
+      else if (type === 'benz') geo = benzGeometry();
       else { const [a, b, k] = BUSES[Math.floor(r() * BUSES.length)]; geo = busGeometry(a, b, k); c.gov = k; c.cols = [a, b]; }
-      c.mesh = new THREE.Mesh(geo, vcMat);
+      c.mesh = new THREE.Mesh(geo, c.reckless ? vcPaint : vcMat);
       c.mesh.castShadow = true;
       if (!['cow', 'elephant', 'fish'].includes(type)) c.mesh.add(vehicleLights(c));
       if (type === 'bus') {
@@ -178,7 +193,7 @@ export class Traffic {
         if (!c.gov) { const cd = new THREE.Mesh(conductorGeometry(), vcMat); cd.position.set(1.3, 0.2, 3.9); cd.rotation.y = Math.PI / 2; c.mesh.add(cd); }
       }
       if (type === 'auto') c.mesh.add(autoBackDecals(AUTO_NAMES[1 + Math.floor(r() * (AUTO_NAMES.length - 1))], randomPlate(r)));
-      c.max *= 0.85 + r() * 0.3;
+      if (!c.reckless) c.max *= 0.85 + r() * 0.3;
       if (opts.follow) c.max = opts.follow.max * (0.97 + r() * 0.06);
       this.scene.add(c.mesh);
       this.cars.push(c);
@@ -261,6 +276,7 @@ export class Traffic {
   }
 
   canEnter(c, sig) {
+    if (c.reckless) return true;               // daddy will sort out the challan
     if (sig) {
       const st = sig.state(c.f[0] ? 'x' : 'z', this.time);
       if (st === 'R') return false;
@@ -306,7 +322,7 @@ export class Traffic {
         }
         if (c.ghost > 0) continue;
         const along = dx * fx + dz * fz;
-        if (along <= 0 || along > 22) continue;
+        if (along <= 0 || along > (c.reckless ? 40 : 22)) continue;
         const lat = Math.abs(dx * fz - dz * fx);
         if (lat > c.halfW + o.halfW + 0.4) continue;
         if (c.slot !== undefined && o.slot !== undefined && c.slot !== o.slot && along < 2.2) continue;   // riding abreast
@@ -318,7 +334,7 @@ export class Traffic {
         const dx = player.pos.x - c.pos.x, dz = player.pos.z - c.pos.z;
         const along = dx * fx + dz * fz;
         const lat = Math.abs(dx * fz - dz * fx);
-        if (along > 0 && along < 22 && lat < c.halfW + 1.1) {
+        if (along > 0 && along < (c.reckless ? 40 : 22) && lat < c.halfW + 1.1) {
           const g = along - c.halfLen - 1.4;
           if (g < gap) { gap = g; byPlayer = true; }
         }

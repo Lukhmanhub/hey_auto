@@ -770,8 +770,9 @@ function emitSmoke(dt) {
 }
 
 // ---------- Street reactions (Malayalam dialogue) ----------
-const WHO = { car: 'Car driver', bus: 'Bus driver', auto: 'Auto chettan', scooter: 'Scooter rider', taxi: 'Taxi driver', tempo: 'Tempo driver', goods: 'Goods auto', van: 'School van driver', fish: 'Fish vendor', jeep: 'Party worker', cow: 'Cow owner', elephant: 'Mahout' };
-const carH = (c) => ({ bus: 3.7, elephant: 5.6, tempo: 2.8, jeep: 2.8 }[c.type] ?? 2.3);
+let daddyCalled = false;
+const WHO = { mini: 'Mini Cooper payyan', benz: 'Judge’s son', car: 'Car driver', bus: 'Bus driver', auto: 'Auto chettan', scooter: 'Scooter rider', taxi: 'Taxi driver', tempo: 'Tempo driver', goods: 'Goods auto', van: 'School van driver', fish: 'Fish vendor', jeep: 'Party worker', cow: 'Cow owner', elephant: 'Mahout' };
+const carH = (c) => ({ bus: 3.7, elephant: 5.6, tempo: 2.8, jeep: 2.8, benz: 2.0 }[c.type] ?? 2.3);
 const carTarget = (c) => () => c.pos;
 const pedTarget = (p) => () => p.group.position;
 const pedHeight = (p) => (p.fallen > 0 ? 0.9 : 2.1);
@@ -811,9 +812,15 @@ function step(dt) {
     if (e.type === 'crash') {
       sound.crash(e.impact);
       haptic(Math.min(1, e.impact / 7), 260, 0.6);
-      rules.fire('crash');
       const c = e.car;
-      setTimeout(() => hud.bubble(pick(DRIVER_HIT[c.type] ?? DRIVER_HIT.car), WHO[c.type] ?? 'Driver', carTarget(c), carH(c), 'driver'), 350);
+      // the rich kids never get a challan, and they let you know why
+      if (c.reckless) {
+        setTimeout(() => hud.bubble(pick(DRIVER_HIT[c.type]), WHO[c.type], carTarget(c), carH(c), 'driver', 4), 350);
+        if (!daddyCalled) { daddyCalled = true; setTimeout(() => { hud.toast('info', 'No case filed', 'Daddy made one phone call'); daddyCalled = false; }, 4200); }
+      } else {
+        rules.fire('crash');
+        setTimeout(() => hud.bubble(pick(DRIVER_HIT[c.type] ?? DRIVER_HIT.car), WHO[c.type] ?? 'Driver', carTarget(c), carH(c), 'driver'), 350);
+      }
       setTimeout(() => sound.honk(c.pos.distanceTo(player.pos), 0, c.type === 'bus'), 150);
     }
     if (e.type === 'honk') {
@@ -850,7 +857,13 @@ function step(dt) {
     if (e.type === 'aibump' && e.a.pos.distanceTo(player.pos) < 80) {
       const s = sound.spatial(e.a.pos.x, e.a.pos.z, player);
       sound.crash(1.2 * s.gain);
-      ARGUMENT.forEach((line, k) => {
+      const rich = e.a.reckless ? e.a : e.b.reckless ? e.b : null;
+      if (rich) {
+        // the rich kid rams someone and tells them off for it; they get a word in back
+        const other = rich === e.a ? e.b : e.a;
+        setTimeout(() => hud.bubble(pick(DRIVER_HIT[rich.type]), WHO[rich.type], carTarget(rich), carH(rich), 'driver', 3.4), 300);
+        setTimeout(() => hud.bubble(pick(DRIVER_HIT[other.type] ?? DRIVER_HIT.car), WHO[other.type] ?? 'Driver', carTarget(other), carH(other), 'driver', 2.6), 2600);
+      } else ARGUMENT.forEach((line, k) => {
         const c = k % 2 ? e.b : e.a;
         setTimeout(() => hud.bubble(line, WHO[c.type] ?? 'Driver', carTarget(c), carH(c), 'driver', 2.2), 300 + k * 1500);
       });

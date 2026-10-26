@@ -84,6 +84,14 @@ Object.assign(DRIVER_HIT, {
   jeep: [L('ഇലക്ഷൻ കഴിയട്ടെ, കാണിച്ചു തരാം!', 'Election kazhiyatte, kaanichu tharaam!', "Wait till the election's over, I'll show you!")],
   cow: [L('എന്റെ പശുവിനെ ഇടിച്ചോ?! ഇറങ്ങെടാ!', 'Ente pashuvine idicho?! Irangeda!', 'You hit my cow?! Get out!')],
   elephant: [L('ആനയുടെ മുന്നിൽ കളിക്കല്ലേ! പോ പുറകോട്ട്!', 'Aanayude munnil kalikkalle! Po purakottu!', "Don't mess in front of the elephant! Back off!")],
+  // the rich kids who think the road is theirs
+  mini: [
+    L('എന്റെ ഡാഡി ഇത് അറിഞ്ഞാലുണ്ടല്ലോ!', 'Ente daddy ithu arinjaalundallo!', 'Wait till my daddy hears about this!'),
+    L('എന്റെ ഡാഡി എന്നേ രക്ഷിക്കും, താൻ പോടോ!', 'Ente daddy enne rakshikkum, thaan podo!', 'My daddy will save me. Get lost!'),
+  ],
+  benz: [
+    L('എന്റെ ഡാഡി ജഡ്‌ജി ആണ് ചെക്കാ, മാറി നിക്ക്!', 'Ente daddy judge aanu chekkaa, maari nikku!', 'My daddy is a judge, kid. Step aside!'),
+  ],
 });
 
 // street calls and announcements
