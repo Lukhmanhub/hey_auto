@@ -305,10 +305,13 @@ export class Traffic {
     if (impact < 4) return;
     const side = lat >= 0 ? 1 : -1, r = this.r;
     // shoved forward and out of the lane, away from the side it was struck on
-    const lx = fz, lz = -fx, mag = Math.min(7, 1.2 + impact * 0.16);
+    // the Mini only nudges it: a short shove and a slight twist, nothing goes over
+    const soft = c.type === 'mini';
+    const lx = fz, lz = -fx, mag = soft ? Math.min(0.9, 0.3 + impact * 0.015) : Math.min(7, 1.2 + impact * 0.16);
     const kx = (fx * 0.75 + lx * side * 0.65) * mag, kz = (fz * 0.75 + lz * side * 0.65) * mag;
     const light = o.type === 'scooter' || o.type === 'fish';
-    o.kick = { x: kx, z: kz, yaw: side * (0.5 + r() * 0.9) * Math.min(1.6, impact / 22), roll: light ? side * 1.35 : 0, t: 0 };
+    const yaw = soft ? side * (0.05 + r() * 0.1) : side * (0.5 + r() * 0.9) * Math.min(1.6, impact / 22);
+    o.kick = { x: kx, z: kz, yaw, roll: light && !soft ? side * 1.35 : 0, t: 0 };
     o.hitCd = 8; o.argue = 7.5; o.ghost = 10; o.speed = 0;
     c.speed *= light ? 0.9 : 0.78;
     c.halt = 4.6;                 // skids to a stop, leans out to say his piece, then floors it again
@@ -491,10 +494,19 @@ export class Traffic {
         const rv = Math.abs(c.speed - player.speed * (pf.x * fx + pf.z * fz));
         if (rv > 4 && !(player.rammedCd > 0)) {
           const side = (dx * fz - dz * fx) >= 0 ? 1 : -1;
-          player.pos.x += (fx * 0.6 + nx) * Math.min(3, rv * 0.08);
-          player.pos.z += (fz * 0.6 + nz) * Math.min(3, rv * 0.08);
-          player.heading += side * Math.min(1.1, 0.25 + rv * 0.02);
-          player.speed = (pf.x * fx + pf.z * fz) * c.speed * 0.45;
+          if (c.type === 'mini') {
+            // the Mini just nudges the auto a little: a short shove, a slight twist
+            const push = Math.min(0.5, 0.15 + rv * 0.008);
+            player.pos.x += (fx * 0.6 + nx) * push;
+            player.pos.z += (fz * 0.6 + nz) * push;
+            player.heading += side * 0.08;
+            player.speed *= 0.5;
+          } else {
+            player.pos.x += (fx * 0.6 + nx) * Math.min(3, rv * 0.08);
+            player.pos.z += (fz * 0.6 + nz) * Math.min(3, rv * 0.08);
+            player.heading += side * Math.min(1.1, 0.25 + rv * 0.02);
+            player.speed = (pf.x * fx + pf.z * fz) * c.speed * 0.45;
+          }
           player.rammedCd = 1.5;
           c.speed *= 0.85;
           c.halt = 4.6;

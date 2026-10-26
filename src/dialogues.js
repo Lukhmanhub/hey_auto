@@ -86,7 +86,7 @@ Object.assign(DRIVER_HIT, {
   elephant: [L('ആനയുടെ മുന്നിൽ കളിക്കല്ലേ! പോ പുറകോട്ട്!', 'Aanayude munnil kalikkalle! Po purakottu!', "Don't mess in front of the elephant! Back off!")],
   // the rich kids who think the road is theirs
   mini: [
-    L('എന്റെ ഡാഡി എന്നേ ഇറക്കി തരും, താൻ പോടോ', 'Ente daddy enne irakki tharum, thaan podo', 'My daddy will get me out. Get lost'),
+    L('എന്ത് വന്നാലും എന്റെ വാപ്പ നോക്കിക്കോളും', 'Enthu vannaalum ente vaappa nokkikkolum', 'Whatever happens, my dad will take care of it'),
   ],
   benz: [
     L('എന്റെ ഡാഡി ജഡ്‌ജി ആണ് ചെക്കാ, മാറി നിക്ക്!', 'Ente daddy judge aanu chekkaa, maari nikku!', 'My daddy is a judge, kid. Step aside!'),
