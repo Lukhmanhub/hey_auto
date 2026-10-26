@@ -85,7 +85,7 @@ function render(d) {
 
   const banner = d.configured ? '' : `<div class="banner"><span>⚠️</span><div>No database connected, so these numbers live in memory and reset. In Cloudflare → Workers &amp; Pages → <b>hey-auto</b> → Settings → Variables and Secrets, add <b>KV_REST_API_URL</b> and <b>KV_REST_API_TOKEN</b> (from Upstash, the same values Vercel had) and deploy again.</div></div>`;
 
-  if (!visits && !sessions.length) {
+  if (!visits && !sessions.length && !Object.keys(d.totals || {}).length) {
     $('#app').innerHTML = `${banner}<div class="state"><h2>No riders yet ${range === '1' ? 'today' : 'in this range'}</h2>Share <b>lukhmandesigns.com/heyauto</b> and the first fares will show up here within seconds.</div>`;
     return;
   }
@@ -120,7 +120,7 @@ function render(d) {
     <div class="grid">
       <div class="card c4"><h3>Device</h3><p class="sub">${fmt(c('rotate'))} phone visit${c('rotate') === 1 ? '' : 's'} started upright and saw “turn your phone”</p>${donut(group(t, 'dev').map(([k, v]) => [`${DEV_ICON[k] ?? ''} ${LABEL.dev[k] ?? k}`, v]), 'visits')}</div>
       <div class="card c4"><h3>Came from</h3><p class="sub">Referrer, app or ?utm_source</p>${bars(group(t, 'src').map(([k, v]) => [LABEL.src[k] ?? k, v]), 7)}</div>
-      <div class="card c4"><h3>Country</h3><p class="sub">From Vercel's edge location</p>${bars(group(t, 'geo').filter(([k]) => k !== 'unknown').map(([k, v]) => [`${flag(k)} ${countryName(k)}`, v]), 7, '#6fb3ff')}</div>
+      <div class="card c4"><h3>Country</h3><p class="sub">From Cloudflare's edge location</p>${bars(group(t, 'geo').filter(([k]) => k !== 'unknown').map(([k, v]) => [`${flag(k)} ${countryName(k)}`, v]), 7, '#6fb3ff')}</div>
       <div class="card c4"><h3>Operating system</h3>${bars(group(t, 'os'), 6, '#4fc27a')}</div>
       <div class="card c4"><h3>Browser</h3>${bars(group(t, 'br'), 6, '#4fc27a')}</div>
       <div class="card c4"><h3>New vs returning</h3>${donut([['New drivers', t['ret:new'] || 0], ['Came back', t['ret:returning'] || 0]], 'visits')}</div>
