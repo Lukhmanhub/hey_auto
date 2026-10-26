@@ -1,5 +1,7 @@
 // Hey Auto analytics dashboard. Reads /api/stats and draws everything with plain SVG/HTML.
-const API = `${import.meta.env.BASE_URL}api/stats`;
+// local dev reads the live numbers from Cloudflare (add ?local for the in-memory test store)
+const LIVE = 'https://hey-auto.pages.dev/heyauto/';
+const API = `${import.meta.env.DEV && !new URLSearchParams(location.search).has('local') ? LIVE : import.meta.env.BASE_URL}api/stats`;
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => (n >= 1e5 ? `${(n / 1e5).toFixed(n >= 1e6 ? 0 : 1)}L` : n >= 1e4 ? `${(n / 1e3).toFixed(1)}k` : Math.round(n).toLocaleString('en-IN'));
@@ -81,7 +83,7 @@ function render(d) {
   $('#live-n').textContent = d.live;
   $('#updated').textContent = `Updated ${new Date(d.generated).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })} · refreshes every 30 s · days in IST`;
 
-  const banner = d.configured ? '' : `<div class="banner"><span>⚠️</span><div>No database connected, so these numbers live in memory and reset on every deploy. In Vercel → <b>hey-auto</b> → Storage, add <b>Upstash for Redis</b> (free) and redeploy.</div></div>`;
+  const banner = d.configured ? '' : `<div class="banner"><span>⚠️</span><div>No database connected, so these numbers live in memory and reset. In Cloudflare → Workers &amp; Pages → <b>hey-auto</b> → Settings → Variables and Secrets, add <b>KV_REST_API_URL</b> and <b>KV_REST_API_TOKEN</b> (from Upstash, the same values Vercel had) and deploy again.</div></div>`;
 
   if (!visits && !sessions.length) {
     $('#app').innerHTML = `${banner}<div class="state"><h2>No riders yet ${range === '1' ? 'today' : 'in this range'}</h2>Share <b>lukhmandesigns.com/heyauto</b> and the first fares will show up here within seconds.</div>`;
